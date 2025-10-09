@@ -1,11 +1,13 @@
 import asyncio
 import re
 import time
+from asyncio import Semaphore
 from datetime import datetime
 from pprint import pprint
 from urllib.parse import urljoin
 
 import aiohttp
+from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 
 BASE_URL = "https://www.openkerja.id"
@@ -15,7 +17,7 @@ SEM_LIMIT = 20
 AD_CLASSES = {"dlpro-banner-beforecontent", "dlpro-banner-insidecontent"}
 
 
-def parse_date(date_str):
+def parse_date(date_str: str):
     try:
         return datetime.fromisoformat(date_str.replace("Z", "+00:00")) if date_str else datetime.min
     except ValueError:
@@ -46,7 +48,7 @@ def clean_description_html(description_div: BeautifulSoup) -> str:
 
     return description_div.decode_contents().strip()
 
-async def fetch_sitemap(session):
+async def fetch_sitemap(session: ClientSession):
     async with session.get(SITEMAP_URL, headers=HEADERS) as res:
         xml_text = await res.text()
         soup = BeautifulSoup(xml_text, "xml")
@@ -68,7 +70,7 @@ async def fetch_sitemap(session):
         data.sort(key=lambda x: parse_date(x["last_modified"]), reverse=True)
         return data
 
-async def fetch_final_redirect(session, apply_link):
+async def fetch_final_redirect(session: ClientSession, apply_link: str):
     final_url = urljoin(BASE_URL, apply_link)
     try:
         async with session.get(final_url, headers=HEADERS, allow_redirects=True) as response:
@@ -89,7 +91,7 @@ async def fetch_final_redirect(session, apply_link):
         return None
 
 
-async def fetch_apply_page(session, apply_url):
+async def fetch_apply_page(session: ClientSession, apply_url: str):
     try:
         full_url = urljoin(BASE_URL, apply_url)
 
@@ -123,7 +125,7 @@ async def fetch_apply_page(session, apply_url):
         return None
 
 
-async def fetch(session, item, semaphore):
+async def fetch(session: ClientSession, item, semaphore: Semaphore):
     async with semaphore:
         url = item["url"]
 
@@ -184,7 +186,7 @@ async def fetch(session, item, semaphore):
                 "position_available": position_available,
             }
 
-async def fetch_with_retry(session, item, semaphore, retries=3):
+async def fetch_with_retry(session: ClientSession, item, semaphore: Semaphore, retries: int = 3):
     for attempt in range(retries):
         try:
             return await fetch(session, item, semaphore)
@@ -194,6 +196,8 @@ async def fetch_with_retry(session, item, semaphore, retries=3):
             else:
                 print(f"Failed {item['url']}: {e}")
                 return None
+    return None
+
 
 async def main():
     start_time = time.perf_counter()
