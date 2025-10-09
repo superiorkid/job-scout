@@ -443,7 +443,6 @@ dependencies = [
     { name = "asyncio" },
     { name = "beautifulsoup4" },
     { name = "fastapi", extra = ["standard"] },
-    { name = "jinja2" },
     { name = "lxml" },
     { name = "requests" },
 ]
@@ -454,7 +453,6 @@ requires-dist = [
     { name = "asyncio", specifier = ">=4.0.0" },
     { name = "beautifulsoup4", specifier = ">=4.14.2" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.118.2" },
-    { name = "jinja2", specifier = ">=3.1.6" },
     { name = "lxml", specifier = ">=6.0.2" },
     { name = "requests", specifier = ">=2.32.5" },
 ]

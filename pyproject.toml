@@ -8,7 +8,6 @@ dependencies = [
     "asyncio>=4.0.0",
     "beautifulsoup4>=4.14.2",
     "fastapi[standard]>=0.118.2",
-    "jinja2>=3.1.6",
     "lxml>=6.0.2",
     "requests>=2.32.5",
 ]
