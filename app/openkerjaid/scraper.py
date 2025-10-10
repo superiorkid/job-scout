@@ -1,19 +1,15 @@
 import asyncio
 import re
-import time
 from asyncio import Semaphore
 from datetime import datetime
-from pprint import pprint
 from urllib.parse import urljoin
 
-import aiohttp
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 
 BASE_URL = "https://www.openkerja.id"
 SITEMAP_URL = "https://www.openkerja.id/post-sitemap2.xml"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; OpenKerjaScraper/1.0; +https://github.com/superiorkid)"}
-SEM_LIMIT = 20
 AD_CLASSES = {"dlpro-banner-beforecontent", "dlpro-banner-insidecontent"}
 
 
@@ -137,7 +133,7 @@ async def fetch(session: ClientSession, item, semaphore: Semaphore):
             company_name = company.get_text(strip=True) if company else None
 
             meta = soup.find("div", class_="entry-meta")
-            number_of_vacancies = meta.find("span").get_text(strip=True) if meta else None
+            number_of_vacancies = int(meta.find("span").get_text(strip=True)) if meta else 0
 
             spec_tables = soup.find_all("table", class_="table-gmr")
             spec_data = {}
@@ -200,30 +196,3 @@ async def fetch_with_retry(session: ClientSession, item, semaphore: Semaphore, r
                 print(f"Failed {item['url']}: {e}")
                 return None
     return None
-
-
-async def main():
-    start_time = time.perf_counter()
-
-    timeout = aiohttp.ClientTimeout(total=30)
-    connector = aiohttp.TCPConnector(limit=50)
-    semaphore = asyncio.Semaphore(SEM_LIMIT)
-
-    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
-        data = await fetch_sitemap(session)
-        print(f"Found {len(data)} URLs to scrape...")
-
-        tasks = [fetch_with_retry(session, item, semaphore) for item in data]
-        results = await asyncio.gather(*tasks)
-        results = [r for r in results if r]
-
-    end_time = time.perf_counter()
-    elapsed = end_time - start_time
-
-    print(f"\nScraped {len(results)} job posts")
-    print(f"Total time cost: {elapsed:.2f} seconds ({elapsed/len(results):.2f}s per post)")
-    pprint(results[0])
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

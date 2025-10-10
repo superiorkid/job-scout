@@ -6,4 +6,6 @@ class Settings(BaseSettings):
     debug: bool
     project_name: str
     description: str
+    api_prefix: str
+
     database_url: str

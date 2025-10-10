@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from sqlalchemy import JSON
 from sqlmodel import SQLModel, Field, Column
@@ -31,7 +31,7 @@ class OpenKerjaBase(SQLModel):
     position_available: Optional[List[Position]] = Field(
         default=None, sa_column=Column(JSON)
     )
-    specification: Optional[List[Specification]] = Field(
+    specification: Optional[Dict[str, Specification]] = Field(
         default=None, sa_column=Column(JSON)
     )
 
