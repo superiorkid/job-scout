@@ -147,7 +147,10 @@ async def fetch(session: ClientSession, item, semaphore: Semaphore):
                     tds = row.find_all("td")
                     if not th or not tds:
                         continue
-                    key = th.get_text(strip=True)
+
+                    key = th.get_text(strip=True).lower()
+                    key = re.sub(r"[^a-z0-9]+", "_", key).strip("_")
+
                     value_td = tds[-1]
                     links = value_td.find_all("a")
 
