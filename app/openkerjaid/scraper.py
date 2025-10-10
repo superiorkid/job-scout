@@ -1,23 +1,91 @@
 import asyncio
 import re
+import time
 from asyncio import Semaphore
-from datetime import datetime
+from pprint import pprint
 from urllib.parse import urljoin
 
+import aiohttp
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 
+from app.utils.parse_date import parse_date
+
 BASE_URL = "https://www.openkerja.id"
-SITEMAP_URL = "https://www.openkerja.id/post-sitemap2.xml"
+SITEMAP_INDEX_URL="https://www.openkerja.id/sitemap_index.xml"
+SITEMAP_TARGET="post-sitemap"
+
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; OpenKerjaScraper/1.0; +https://github.com/superiorkid)"}
 AD_CLASSES = {"dlpro-banner-beforecontent", "dlpro-banner-insidecontent"}
+SEM_LIMIT = 20
+
+async def fetch_xml(session: ClientSession, url: str) -> str:
+    async with session.get(url, headers=HEADERS) as res:
+        return await res.text()
+
+async def parse_sitemap(session: ClientSession, sitemap_url: str):
+    xml_text = await fetch_xml(session, sitemap_url)
+    soup = BeautifulSoup(xml_text, "xml")
+
+    items = []
+    for url_tag in soup.find_all("url"):
+        loc = url_tag.find("loc")
+        lastmod = url_tag.find("lastmod")
+        image_tag = url_tag.find("image:loc")
+
+        if not loc:
+            continue
+
+        items.append({
+            "url": loc.text.strip(),
+            "last_modified": lastmod.text.strip() if lastmod else None,
+            "image": image_tag.text.strip() if image_tag else None,
+        })
+
+    return items
 
 
-def parse_date(date_str: str):
+async def fetch_sitemap(session: ClientSession):
+    xml_text = await fetch_xml(session, SITEMAP_INDEX_URL)
+    soup = BeautifulSoup(xml_text, "xml")
+
+    # Filter only post-sitemap*.xml
+    sitemap_urls = [
+        sitemap.find("loc").text.strip()
+        for sitemap in soup.find_all("sitemap")
+        if sitemap.find("loc") and SITEMAP_TARGET in sitemap.find("loc").text
+    ]
+
+    print(f"Found {len(sitemap_urls)} post sitemaps")
+
+    tasks = [parse_sitemap(session, url) for url in sitemap_urls]
+    results = await asyncio.gather(*tasks)
+
+    # Flattern results
+    all_items = [item for sublist in results for item in sublist]
+    all_items.sort(key=lambda x: parse_date(x["last_modified"]), reverse=True)
+
+    return all_items
+
+async def fetch_final_redirect(session: ClientSession, apply_link: str):
+    final_url = urljoin(BASE_URL, apply_link)
     try:
-        return datetime.fromisoformat(date_str.replace("Z", "+00:00")) if date_str else datetime.min
-    except ValueError:
-        return datetime.min
+        async with session.get(final_url, headers=HEADERS, allow_redirects=True) as response:
+            html = await response.text()
+            soup = BeautifulSoup(html, "html.parser")
+
+            onclick_link = soup.select_one('a[onclick*="location.href"]')
+            if onclick_link and "onclick" in onclick_link.attrs:
+                match = re.search(r"location\.href='([^']+)'", onclick_link["onclick"])
+                if match:
+                    real_apply_url = match.group(1)
+                    return real_apply_url
+
+            print(f"No redirect link found in {apply_link}")
+            return None
+    except Exception as e:
+        print(f"Failed to resolve redirect for {apply_link}: {e}")
+        return None
 
 def clean_description_html(description_div: BeautifulSoup) -> str:
     if not description_div:
@@ -43,49 +111,6 @@ def clean_description_html(description_div: BeautifulSoup) -> str:
             div.unwrap()
 
     return description_div.decode_contents().strip()
-
-async def fetch_sitemap(session: ClientSession):
-    async with session.get(SITEMAP_URL, headers=HEADERS) as res:
-        xml_text = await res.text()
-        soup = BeautifulSoup(xml_text, "xml")
-
-        data = []
-
-        for url_tag in soup.find_all("url"):
-            loc = url_tag.find("loc").text
-            lastmod = url_tag.find("lastmod").text if url_tag.find("lastmod") else None
-            image_tag = url_tag.find("image:loc")
-            image = image_tag.text if image_tag else None
-
-            data.append({
-                "url": loc,
-                "last_modified": lastmod,
-                "image": image
-            })
-
-        data.sort(key=lambda x: parse_date(x["last_modified"]), reverse=True)
-        return data
-
-async def fetch_final_redirect(session: ClientSession, apply_link: str):
-    final_url = urljoin(BASE_URL, apply_link)
-    try:
-        async with session.get(final_url, headers=HEADERS, allow_redirects=True) as response:
-            html = await response.text()
-            soup = BeautifulSoup(html, "html.parser")
-
-            onclick_link = soup.select_one('a[onclick*="location.href"]')
-            if onclick_link and "onclick" in onclick_link.attrs:
-                match = re.search(r"location\.href='([^']+)'", onclick_link["onclick"])
-                if match:
-                    real_apply_url = match.group(1)
-                    return real_apply_url
-
-            print(f"No redirect link found in {apply_link}")
-            return None
-    except Exception as e:
-        print(f"Failed to resolve redirect for {apply_link}: {e}")
-        return None
-
 
 async def fetch_apply_page(session: ClientSession, apply_url: str):
     try:
@@ -120,7 +145,6 @@ async def fetch_apply_page(session: ClientSession, apply_url: str):
         print(f"Failed to fetch apply page {apply_url}: {e}")
         return None
 
-
 async def fetch(session: ClientSession, item, semaphore: Semaphore):
     async with semaphore:
         url = item["url"]
@@ -150,7 +174,7 @@ async def fetch(session: ClientSession, item, semaphore: Semaphore):
                     value_td = tds[-1]
                     links = value_td.find_all("a")
 
-                    if key == "Tanggal Dipublish":
+                    if key == "tanggal_dipublish":
                         time_tag = value_td.find("time", class_="entry-date published")
                         value = time_tag.get_text(strip=True) if time_tag else value_td.get_text(strip=True)
                     elif links:
@@ -196,3 +220,30 @@ async def fetch_with_retry(session: ClientSession, item, semaphore: Semaphore, r
                 print(f"Failed {item['url']}: {e}")
                 return None
     return None
+
+
+async def main():
+    start_time = time.perf_counter()
+
+    timeout = aiohttp.ClientTimeout(total=30)
+    connector = aiohttp.TCPConnector(limit=50)
+    semaphore = asyncio.Semaphore(SEM_LIMIT)
+
+    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+        data = await fetch_sitemap(session)
+        print(f"Found {len(data)} URLs to scrape...")
+
+        tasks = [fetch_with_retry(session, item, semaphore) for item in data]
+        results = await asyncio.gather(*tasks)
+        results = [r for r in results if r]
+
+    end_time = time.perf_counter()
+    elapsed = end_time - start_time
+
+    print(f"\nScraped {len(results)} job posts")
+    print(f"Total time cost: {elapsed:.2f} seconds ({elapsed/len(results):.2f}s per post)")
+    pprint(results[0])
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
