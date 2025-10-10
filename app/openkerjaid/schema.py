@@ -14,13 +14,13 @@ class Specification(SQLModel):
     batas_lamaran: Optional[str] = None
     link: Optional[str] = None
     lokasi: Optional[str] = None
-    pendidkan: Optional[str] = None
+    pendidikan: Optional[str] = None
     pengalaman: Optional[str] = None
     tanggal_dipublish: Optional[str] = None
     tipe_pekerjaan: Optional[str] = None
 
 
-class OpenKerjaSchema(SQLModel):
+class OpenKerjaBase(SQLModel):
     company_name: Optional[str] = Field(default=None)
     description: Optional[str] = Field(default=None)
     image: Optional[str] = Field(default=None)

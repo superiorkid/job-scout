@@ -1,22 +1,18 @@
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 
 from app import settings
-from app.database import init_db
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await init_db()
-    yield
-    print("Cleaning up resources...")
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     await init_db()
+#     yield
+#     print("Cleaning up resources...")
 
 app = FastAPI(
     title=settings.project_name,
     debug=settings.debug,
     description=settings.description,
-    lifespan=lifespan,
+    # lifespan=lifespan,
 )
 
 

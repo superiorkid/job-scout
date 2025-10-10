@@ -4,10 +4,10 @@ from datetime import datetime, timezone
 from sqlalchemy import DateTime
 from sqlmodel import Field, Column
 
-from app.openkerjaid.schema import OpenKerjaSchema
+from app.openkerjaid.schema import OpenKerjaBase
 
 
-class OpenKerjaModel(OpenKerjaSchema, table=True):
+class OpenKerjaModel(OpenKerjaBase, table=True):
     __tablename__ = "openkerja"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
