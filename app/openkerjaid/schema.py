@@ -34,4 +34,3 @@ class OpenKerjaBase(SQLModel):
     specification: Optional[Dict[str, Specification]] = Field(
         default=None, sa_column=Column(JSON)
     )
-
