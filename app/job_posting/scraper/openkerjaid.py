@@ -19,6 +19,13 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; OpenKerjaScraper/1.0; +https:
 AD_CLASSES = {"dlpro-banner-beforecontent", "dlpro-banner-insidecontent"}
 SEM_LIMIT = 20
 
+EMAIL_REGEX = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
+PHONE_REGEX = re.compile(r"(\+62|62|0)(\d{8,12})")
+
+JOB_TITLE_PATTERN = re.compile(r"^\d+\.", re.IGNORECASE)
+SUBJECT_PATTERN = re.compile(r"subject\s*[:\-]", re.IGNORECASE)
+EMAIL_PATTERN = re.compile(r"[\w\.-]+@[\w\.-]+\.\w+")
+
 async def fetch_xml(session: ClientSession, url: str) -> str:
     async with session.get(url, headers=HEADERS) as res:
         return await res.text()
@@ -44,6 +51,61 @@ async def parse_sitemap(session: ClientSession, sitemap_url: str):
 
     return items
 
+def extract_contact_from_paragraphs(desc_div: BeautifulSoup):
+    paragraphs = desc_div.find_all("p")
+    if not paragraphs:
+        return None, None
+
+    # Find the paragraph containing "Baca:"
+    baca_index = None
+    for i, p in enumerate(paragraphs):
+        if "Baca:" in p.get_text():
+            baca_index = i
+            break
+
+    # Only consider paragraphs after "Baca:"
+    contact_paragraphs = paragraphs[baca_index + 1 :] if baca_index is not None else paragraphs
+
+    email = None
+    phone = None
+
+    for p in contact_paragraphs:
+        text = p.get_text(" ", strip=True)
+
+        if not email:
+            email_match = EMAIL_REGEX.search(text)
+            if email_match:
+                email = email_match.group(0)
+
+        if not phone:
+            phone_match = PHONE_REGEX.search(text)
+            if phone_match:
+                phone = phone_match.group(0)
+
+        # Stop early if both found
+        if email and phone:
+            break
+
+    return email, phone
+
+def extract_job_sections(description_div: BeautifulSoup):
+    job_sections = []
+
+    for strong_tag in description_div.find_all("strong"):
+        text = strong_tag.get_text(" ", strip=True)
+
+        if not JOB_TITLE_PATTERN.match(text):
+            continue
+        if EMAIL_PATTERN.search(text):
+            continue
+        start_p = strong_tag.find_parent("p")
+        if not start_p:
+            continue
+
+        clean_title = re.sub(r"^\d+\.\s*", "", text).strip()
+        job_sections.append(clean_title)
+
+    return job_sections
 
 async def fetch_sitemap(session: ClientSession):
     xml_text = await fetch_xml(session, SITEMAP_INDEX_URL)
@@ -61,8 +123,11 @@ async def fetch_sitemap(session: ClientSession):
     tasks = [parse_sitemap(session, url) for url in sitemap_urls]
     results = await asyncio.gather(*tasks)
 
-    # Flattern results
-    all_items = [item for sublist in results for item in sublist]
+    all_items = [
+        item for sublist in results
+        for item in sublist
+        if item["url"].startswith(BASE_URL)
+    ]
     all_items.sort(key=lambda x: parse_date(x["last_modified"]), reverse=True)
 
     return all_items
@@ -191,12 +256,24 @@ async def fetch(session: ClientSession, item, semaphore: Semaphore):
             apply_link = apply_button.get("href") if apply_button else None
 
             position_available = None
+
             if apply_link and apply_link not in ["#", "apply", ""]:
                 try:
                     position_available = await fetch_apply_page(session, apply_link)
                 except Exception as e:
                     print(f"Failed to fetch apply page {apply_link}: {e}")
                     position_available = None
+            else:
+                email, phone = extract_contact_from_paragraphs(desc_div)
+                positions = extract_job_sections(desc_div)
+                position_available = [
+                    {
+                        "text": position,
+                        "application_contact_email": email,
+                        "application_contact_phone": phone
+                    }
+                    for position in positions
+                ]
 
             return {
                 "url": url,
@@ -233,7 +310,7 @@ async def main():
         data = await fetch_sitemap(session)
         print(f"Found {len(data)} URLs to scrape...")
 
-        tasks = [fetch_with_retry(session, item, semaphore) for item in data]
+        tasks = [fetch_with_retry(session, item, semaphore) for item in data[:10]]
         results = await asyncio.gather(*tasks)
         results = [r for r in results if r]
 
@@ -242,7 +319,7 @@ async def main():
 
     print(f"\nScraped {len(results)} job posts")
     print(f"Total time cost: {elapsed:.2f} seconds ({elapsed/len(results):.2f}s per post)")
-    pprint(results[0])
+    pprint(results)
 
 
 if __name__ == "__main__":

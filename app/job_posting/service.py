@@ -17,7 +17,7 @@ async def scrape_and_save(session: AsyncSession):
         data = await fetch_sitemap(http)
         print(f"Found {len(data)} URLs to scrape...")
 
-        tasks = [fetch_with_retry(http, item, semaphore) for item in data]
+        tasks = [fetch_with_retry(http, item, semaphore) for item in data[:1]]
         results = await asyncio.gather(*tasks)
 
         # for result in filter(None, results):
