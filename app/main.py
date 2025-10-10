@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from app import settings
-from app.openkerjaid.router import openkerjaid_router
+from app.job_posting.router import openkerjaid_router
 
 app = FastAPI(
     title=settings.project_name,

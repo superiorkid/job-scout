@@ -5,12 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlmodel import func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
-from app.models import OpenKerjaModel
-from app.openkerjaid.service import scrape_and_save
+from app.models import JobPosting
+from app.job_posting.service import scrape_and_save
 
 openkerjaid_router = APIRouter(tags=["OpenKerja"], prefix="/openkerja")
 
@@ -23,11 +24,13 @@ async def jobs(
     try:
         offset = (page - 1) * limit
 
-        total_stmt = select(func.count()).select_from(OpenKerjaModel)
+        total_stmt = select(func.count()).select_from(JobPosting)
         total_result = await session.exec(total_stmt)
         total_count = total_result.scalar_one()
 
-        query = select(OpenKerjaModel).limit(limit).offset(offset)
+        query = select(JobPosting).limit(limit).offset(offset).options(
+            selectinload(JobPosting.positions), selectinload(JobPosting.specification)
+        )
         result = await session.exec(query)
         jobs_vacancies = result.scalars().all()
 
