@@ -4,3 +4,6 @@ async def scrape_provider(provider_name: str, session: AsyncSession):
     if provider_name == "OpenKerja":
         from app.scraper.openkerjaid import scrape_and_save
         await scrape_and_save(session)
+    if provider_name == "JakartaKerja":
+        from app.scraper.jakartakerja import scrape_and_save
+        await scrape_and_save(session)

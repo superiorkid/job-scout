@@ -1,6 +1,7 @@
 import asyncio
 import time
 from asyncio import Semaphore
+from datetime import datetime, timezone
 from pprint import pprint
 
 import aiohttp
@@ -10,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from app.constants import SEM_LIMIT, HEADERS
-from app.models import JobProvider
+from app.models import JobProvider, JobPosting, Specification, Position
 from app.scraper.service import fetch_sitemap, decode_cf_email
 
 BASE_URL = "https://www.jakartakerja.com"
@@ -62,19 +63,12 @@ async def fetch(session: ClientSession, item, semaphore: Semaphore):
                 # Specification
                 specification = {}
 
-                def safe_text(element):
-                    return element.get_text(strip=True) if element else None
-
-                def next_li_text(selector):
-                    el = container.find("li", class_=selector)
-                    return safe_text(el.find_next_sibling("li")) if el and el.find_next_sibling("li") else None
-
-                specification["education_level"] = next_li_text("pendidikan")
-                specification["experience_level"] = next_li_text("pengalaman-kerja")
-                specification["gender"] = next_li_text("gender")
-                specification["age"] = next_li_text("umur")
-                specification["location"] = next_li_text("lokasi")
-                specification["application_deadline"] = next_li_text("batas-lamaran")
+                specification["education_level"] = next_li_text(container, "pendidikan")
+                specification["experience_level"] = next_li_text(container, "pengalaman-kerja")
+                specification["gender"] = next_li_text(container, "gender")
+                specification["age"] = next_li_text(container, "umur")
+                specification["location"] = next_li_text(container, "lokasi")
+                specification["application_deadline"] = next_li_text(container, "batas-lamaran")
 
                 salary = container.find("li", class_="gaji")
                 salary_value = (
@@ -152,15 +146,15 @@ async def scrape_and_save(session: AsyncSession):
     provider = provider_result.scalar_one_or_none()
 
     if not provider:
-            # create it if not exists
-            provider = JobProvider(name="JakartaKerja", base_url=BASE_URL)
-            session.add(provider)
-            await session.commit()
-            await session.refresh(provider)
+        # create it if not exists
+        provider = JobProvider(name="JakartaKerja", base_url=BASE_URL)
+        session.add(provider)
+        await session.commit()
+        await session.refresh(provider)
 
     try:
-        # provider.is_syncing = True
-        # await session.commit()
+        provider.is_syncing = True
+        await session.commit()
 
         async with aiohttp.ClientSession(connector=connector, timeout=timeout) as http:
             data = await fetch_sitemap(
@@ -174,69 +168,75 @@ async def scrape_and_save(session: AsyncSession):
             tasks = [fetch_with_retry(http, item, semaphore) for item in data[:1]]
             results = await asyncio.gather(*tasks)
 
-            # for result in filter(None, results):
-            #     query = select(JobPosting).where(JobPosting.job_url == result["url"])
-            #     existing_result = await session.execute(query)
-            #     existing = existing_result.scalar_one_or_none()
-            #
-            #     spec_data = result.get("specification") or {}
-            #
-            #     spec_instance = Specification(
-            #         location=spec_data.get("lokasi"),
-            #         education_level=spec_data.get("pendidikan"),
-            #         experience_level=spec_data.get("pengalaman"),
-            #         date_published=spec_data.get("tanggal_dipublish"),
-            #         job_type=spec_data.get("tipe_pekerjaan"),
-            #         application_deadline=spec_data.get("batas_lamaran"),
-            #         major=spec_data.get("jurusan")
-            #     )
-            #
-            #     position_data_list = result.get("position_available", [])
-            #
-            #     if existing:
-            #         existing.company_name = result.get("company_name")
-            #         existing.description = result.get("description")
-            #         existing.image = result.get("image")
-            #         existing.last_modified = result.get("last_modified")
-            #         existing.number_of_vacancies = result.get("number_of_vacancies")
-            #         existing.job_provider_id = provider.id
-            #
-            #         if existing.specification:
-            #             for field, value in spec_instance.model_dump(exclude_unset=True).items():
-            #                 setattr(existing.specification, field, value)
-            #         else:
-            #             existing.specification = spec_instance
-            #
-            #         existing.positions.clear()
-            #         existing.positions.extend([Position(**p) for p in position_data_list])
-            #
-            #     else:
-            #         job_posting = JobPosting(
-            #             job_url=result["url"],
-            #             company_name=result.get("company_name"),
-            #             description=result.get("description"),
-            #             image=result.get("image"),
-            #             last_modified=result.get("last_modified"),
-            #             number_of_vacancies=result.get("number_of_vacancies"),
-            #             job_provider_id=provider.id,
-            #             specification=spec_instance,
-            #             positions=[Position(**p) for p in position_data_list]
-            #         )
-            #         session.add(job_posting)
-            #
-            #     await session.commit()
+            for result in filter(None, results):
+                query = select(JobPosting).where(JobPosting.job_url == result["job_url"])
+                existing_result = await session.execute(query)
+                existing = existing_result.scalar_one_or_none()
 
-        # provider.is_syncing = False
-        # provider.last_synced_at = datetime.now(timezone.utc)
-        # await session.commit()
-        #
-        # print(f"\nSynced {len(results)} job posts from {provider.name}")
+                spec_data = result.get("specification") or {}
+
+                spec_instance = Specification(
+                    location=spec_data.get("location"),
+                    education_level=spec_data.get("education_level"),
+                    experience_level=spec_data.get("experience_level"),
+                    application_deadline=spec_data.get("application_deadline"),
+                    age=spec_data.get("age"),
+                    gender=spec_data.get("gender")
+                )
+
+                position_data_list = result.get("positions", [])
+
+                if existing:
+                    existing.company_name = result.get("company_name")
+                    existing.description = result.get("description")
+                    existing.image = result.get("image")
+                    existing.last_modified = result.get("last_modified")
+                    existing.number_of_vacancies = result.get("number_of_vacancies")
+                    existing.job_provider_id = provider.id
+
+                    if existing.specification:
+                        for field, value in spec_instance.model_dump(exclude_unset=True).items():
+                            setattr(existing.specification, field, value)
+                    else:
+                        existing.specification = spec_instance
+
+                    existing.positions.clear()
+                    existing.positions.extend([Position(**p) for p in position_data_list])
+
+                else:
+                    job_posting = JobPosting(
+                        job_url=result["job_url"],
+                        company_name=result.get("company_name"),
+                        description=result.get("description"),
+                        image=result.get("image"),
+                        last_modified=result.get("last_modified"),
+                        number_of_vacancies=result.get("number_of_vacancies"),
+                        job_provider_id=provider.id,
+                        specification=spec_instance,
+                        positions=[Position(**p) for p in position_data_list]
+                    )
+                    session.add(job_posting)
+
+                await session.commit()
+
+        provider.is_syncing = False
+        provider.last_synced_at = datetime.now(timezone.utc)
+        await session.commit()
+
+        print(f"\nSynced {len(results)} job posts from {provider.name}")
 
     except Exception as e:
-        # provider.is_syncing = False
-        # await session.commit()
+        provider.is_syncing = False
+        await session.commit()
         print(f"Sync failed for {provider.name}: {e}")
 
+
+def safe_text(element):
+    return element.get_text(strip=True) if element else None
+
+def next_li_text(container: BeautifulSoup, selector: str):
+    el = container.find("li", class_=selector)
+    return safe_text(el.find_next_sibling("li")) if el and el.find_next_sibling("li") else None
 
 async def main():
     start_time = time.perf_counter()
