@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from app.constants import SEM_LIMIT, HEADERS
 from app.models import JobProvider
-from app.scraper.service import fetch_sitemap
+from app.scraper.service import fetch_sitemap, decode_cf_email
 
 BASE_URL = "https://www.jakartakerja.com"
 
@@ -35,119 +35,112 @@ async def fetch(session: ClientSession, item, semaphore: Semaphore):
     async with semaphore:
         url = item["url"]
 
-        async with session.get(url, headers=HEADERS) as response:
-            html = await response.text()
-            soup = BeautifulSoup(html, "html.parser")
+        try:
+            async with session.get(url, headers=HEADERS) as response:
+                html = await response.text()
+                soup = BeautifulSoup(html, "html.parser")
 
-            container = soup.find("div", id="loker-container")
+                container = soup.find("div", id="loker-container")
+                if not container:
+                    print(f"No container found for {url}")
+                    return None
 
-            company_name = container.find("span", class_="perusahaan").text
-            image = container.find("img", class_="attachment-thumb100").get("src")
+                company_name = None
+                image = None
+                if container.find("span", class_="perusahaan"):
+                    company_name = container.find("span", class_="perusahaan").get_text(strip=True)
+                if container.find("img", class_="attachment-thumb100"):
+                    image = container.find("img", class_="attachment-thumb100").get("src")
 
-            # find description
-            html_blocks = []
-            for h2 in container.find_all("h2"):
-                next_span = h2.find_next_sibling("span", class_="loker-detail")
-                if next_span:
-                    combined_html = str(h2) + str(next_span)
-                    html_blocks.append(combined_html)
-            description = "\n".join(html_blocks)
+                html_blocks = []
+                for h2 in container.find_all("h2"):
+                    next_span = h2.find_next_sibling("span", class_="loker-detail")
+                    if next_span:
+                        html_blocks.append(str(h2) + str(next_span))
+                description = "\n".join(html_blocks) if html_blocks else None
 
+                # Specification
+                specification = {}
 
-            # specification
-            specification = {}
+                def safe_text(element):
+                    return element.get_text(strip=True) if element else None
 
-            education = container.find("li", class_="pendidikan")
-            education_level = (
-                education.find_next_sibling("li").text.strip()
-                if education and education.find_next_sibling("li")
-                else None
-            )
-            specification["education_level"] = education_level
+                def next_li_text(selector):
+                    el = container.find("li", class_=selector)
+                    return safe_text(el.find_next_sibling("li")) if el and el.find_next_sibling("li") else None
 
-            experience = container.find("li", class_="pengalaman-kerja")
-            experience_level = (
-                experience.find_next_sibling("li").text.strip()
-                if experience and experience.find_next_sibling("li")
-                else None
-            )
-            specification["experience_level"] = experience_level
+                specification["education_level"] = next_li_text("pendidikan")
+                specification["experience_level"] = next_li_text("pengalaman-kerja")
+                specification["gender"] = next_li_text("gender")
+                specification["age"] = next_li_text("umur")
+                specification["location"] = next_li_text("lokasi")
+                specification["application_deadline"] = next_li_text("batas-lamaran")
 
-            gender = container.find("li", class_="gender")
-            gender_value = (
-                gender.find_next_sibling("li").text.strip()
-                if gender and gender.find_next_sibling("li")
-                else None
-            )
-            specification["gender"] = gender_value
+                salary = container.find("li", class_="gaji")
+                salary_value = (
+                    safe_text(salary.find_next_sibling("li"))
+                    if salary and salary.find_next_sibling("li")
+                    else None
+                )
 
-            age = container.find("li", class_="umur")
-            age_value = (
-                age.find_next_sibling("li").text.strip()
-                if age and age.find_next_sibling("li")
-                else None
-            )
-            specification["age"] = age_value
+                email_address = None
+                lamar = container.find("div", id="lamar-float")
+                if lamar:
+                    email_tag = lamar.find("li", class_="email")
+                    if email_tag and email_tag.find("a"):
+                        email_href = email_tag.find("a").get("href", "")
+                        if email_href.startswith("/cdn-cgi/l/email-protection#"):
+                            clean_email = decode_cf_email(email_href)
+                            email_address = clean_email.split("?")[0].strip()
+                        elif email_href.startswith("mailto:"):
+                            email_address = email_href.split("mailto:")[1].split("?")[0]
 
-            location = container.find("li", class_="lokasi")
-            location_value = (
-                location.find_next_sibling("li").text.strip()
-                if location and location.find_next_sibling("li")
-                else None
-            )
-            specification["location"] = location_value
+                phone = container.find("li", class_="telepon")
+                application_contact_phone = (
+                    safe_text(phone.find_next_sibling("li"))
+                    if phone and phone.find_next_sibling("li")
+                    else None
+                )
 
-            salary = container.find("li", class_="gaji")
-            salary_value = (
-                salary.find_next_sibling("li").text.strip()
-                if salary and salary.find_next_sibling("li")
-                else None
-            )
-            specification["salary"] = salary_value
+                contact_url = container.find("li", class_="link")
+                application_contact_url = (
+                    contact_url.find("a")["href"].strip()
+                    if contact_url and contact_url.find("a") and contact_url.find("a").get("href")
+                    else None
+                )
 
-            email = container.find("li", class_="email")
-            application_contact_email = (
-                email.find_next_sibling("li").text.strip()
-                if email and email.find_next_sibling("li")
-                else None
-            )
-            specification["application_contact_email"] = application_contact_email
-
-            phone = container.find("li", class_="telepon")
-            application_contact_phone = (
-                phone.find_next_sibling("li").text.strip()
-                if phone and phone.find_next_sibling("li")
-                else None
-            )
-            specification["application_contact_phone"] = application_contact_phone
-
-            contact_url = container.find("li", class_="link")
-            application_contact_url = (
-                contact_url.find("a")["href"].strip()
-                if contact_url and contact_url.find("a") and contact_url.find("a").get("href")
-                else None
-            )
-            specification["application_contact_url"] = application_contact_url
-
-            # TODO: complete this
-
-            title = container.find("h1")
-            if title:
-                text_nodes = title.find_all(string=True)
-                position_text = text_nodes[-1].strip() if text_nodes else None
-                positions = [p.strip() for p in position_text.split("-")] if position_text else []
-            else:
                 positions = []
+                title = container.find("h1")
+                if title:
+                    text_nodes = title.find_all(string=True)
+                    position_text = text_nodes[-1].strip() if text_nodes else ""
+                    positions = [p.strip() for p in position_text.split("-") if p.strip()]
 
-            return {
-                "company_name": company_name,
-                "job_url": url,
-                "image": image,
-                "last_modified": item["last_modified"],
-                # "description": description,
-                "specification": specification,
-                "positions": []
-            }
+                position_available = [
+                    {
+                        "text": p,
+                        "application_contact_url": application_contact_url,
+                        "application_contact_phone": application_contact_phone,
+                        "application_contact_email": email_address,
+                        "salary": salary_value,
+                    }
+                    for p in positions
+                ]
+
+                return {
+                    "company_name": company_name,
+                    "number_of_vacancies": len(position_available),
+                    "job_url": url,
+                    "image": image,
+                    "last_modified": item.get("last_modified"),
+                    "description": description,
+                    "specification": specification,
+                    "positions": position_available,
+                }
+
+        except Exception as e:
+            print(f"Failed {url}: {e}")
+            return None
 
 
 async def scrape_and_save(session: AsyncSession):
@@ -260,7 +253,7 @@ async def main():
         )
         print(f"Found {len(data)} URLs to scrape...")
 
-        tasks = [fetch_with_retry(session, item, semaphore) for item in data[:1]]
+        tasks = [fetch_with_retry(session, item, semaphore) for item in data[:15]]
         results = await asyncio.gather(*tasks)
         results = [r for r in results if r]
 

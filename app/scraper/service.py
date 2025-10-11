@@ -85,3 +85,14 @@ async def fetch_sitemap(
 
     all_items.sort(key=lambda x: parse_date(x["last_modified"]), reverse=True)
     return all_items
+
+
+def decode_cf_email(encoded_str: str):
+    if encoded_str.startswith("/cdn-cgi/l/email-protection#"):
+        encoded_str = encoded_str.split("#")[-1]
+    r = int(encoded_str[:2], 16)
+    email = ''.join(
+        chr(int(encoded_str[i:i + 2], 16) ^ r)
+        for i in range(2, len(encoded_str), 2)
+    )
+    return email
