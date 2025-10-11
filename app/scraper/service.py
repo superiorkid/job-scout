@@ -1,4 +1,6 @@
 import asyncio
+from datetime import datetime
+from typing import Optional
 from urllib.parse import urlparse
 
 from aiohttp import ClientSession
@@ -33,18 +35,41 @@ async def parse_sitemap(session: ClientSession, sitemap_url: str):
 
     return items
 
-async def fetch_sitemap(session: ClientSession, sitemap_index_url: str, sitemap_target: str):
+async def fetch_sitemap(
+    session: ClientSession,
+    sitemap_index_url: str,
+    sitemap_target: str,
+    last_sync_at: Optional[datetime] = None
+):
     xml_text = await fetch_xml(session, sitemap_index_url)
     soup = BeautifulSoup(xml_text, "xml")
 
-    # Filter only post-sitemap*.xml
-    sitemap_urls = [
-        sitemap.find("loc").text.strip()
-        for sitemap in soup.find_all("sitemap")
-        if sitemap.find("loc") and sitemap_target in sitemap.find("loc").text
-    ]
+    sitemap_urls = []
+    for sitemap in soup.find_all("sitemap"):
+        loc_tag = sitemap.find("loc")
+        lastmod_tag = sitemap.find("lastmod")
 
-    print(f"Found {len(sitemap_urls)} post sitemaps")
+        if not loc_tag:
+            continue
+
+        loc = loc_tag.text.strip()
+        if sitemap_target not in loc:
+            continue
+
+        if lastmod_tag:
+            try:
+                lastmod = datetime.fromisoformat(lastmod_tag.text.strip().replace("Z", "+00:00"))
+            except Exception:
+                lastmod = None
+        else:
+            lastmod = None
+
+        if last_sync_at and lastmod and lastmod <= last_sync_at:
+            continue
+
+        sitemap_urls.append(loc)
+
+    print(f"Found {len(sitemap_urls)} post sitemaps to sync")
 
     tasks = [parse_sitemap(session, url) for url in sitemap_urls]
     results = await asyncio.gather(*tasks)
@@ -57,6 +82,6 @@ async def fetch_sitemap(session: ClientSession, sitemap_index_url: str, sitemap_
         for item in sublist
         if item["url"].startswith(base_url)
     ]
-    all_items.sort(key=lambda x: parse_date(x["last_modified"]), reverse=True)
 
+    all_items.sort(key=lambda x: parse_date(x["last_modified"]), reverse=True)
     return all_items

@@ -11,7 +11,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
 from app.job_posting.service import scrape_provider
-from app.models import JobPosting
+from app.models import JobPosting, JobProvider
 
 jobs_posting_router = APIRouter(tags=["job_posting"], prefix="/jobs")
 
@@ -68,6 +68,27 @@ async def sync_jobs(
 ):
     if not provider:
         raise HTTPException(status_code=400, detail="Provider name is required")
+
+    provider_result = await session.exec(
+        select(JobProvider).where(JobProvider.name == provider)
+    )
+    job_provider = provider_result.scalar_one_or_none()
+
+    if not job_provider:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Provider '{provider}' not found. Please register or seed it first."
+        )
+
+    active_sync_query = await session.exec(
+        select(JobProvider).where(JobProvider.is_syncing == True)
+    )
+    active_provider = active_sync_query.first()
+    if active_provider:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Provider '{active_provider.name}' is currently syncing. Please wait until the sync process completes before proceeding."
+        )
 
     background_task.add_task(scrape_provider, provider, session)
     return JSONResponse(

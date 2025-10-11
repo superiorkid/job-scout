@@ -15,6 +15,7 @@ class SpecificationBase(SQLModel):
     application_deadline: Optional[str] = None
     location: Optional[str] = None
     education_level: Optional[str] = None
+    major: Optional[str] = None
     experience_level: Optional[str] = None
     date_published: Optional[str] = None
     job_type: Optional[str] = None
