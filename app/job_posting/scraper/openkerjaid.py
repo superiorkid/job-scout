@@ -202,7 +202,7 @@ async def fetch_apply_page(session: ClientSession, apply_url: str):
             for item in relative_links:
                 full_url = urljoin(full_url, item["link"])
                 final_url = await fetch_final_redirect(session,full_url)
-                item["final_url"] = final_url
+                item["application_contact_url"] = final_url
 
             return relative_links
 
@@ -310,7 +310,7 @@ async def main():
         data = await fetch_sitemap(session)
         print(f"Found {len(data)} URLs to scrape...")
 
-        tasks = [fetch_with_retry(session, item, semaphore) for item in data[:10]]
+        tasks = [fetch_with_retry(session, item, semaphore) for item in data[:5]]
         results = await asyncio.gather(*tasks)
         results = [r for r in results if r]
 

@@ -1,7 +1,6 @@
-from typing import Optional, List, Dict
+from typing import Optional
 
-from sqlalchemy import JSON
-from sqlmodel import SQLModel, Field, Column
+from sqlmodel import SQLModel, Field
 
 
 class PositionBase(SQLModel):
@@ -19,7 +18,7 @@ class SpecificationBase(SQLModel):
     experience_level: Optional[str] = None
     date_published: Optional[str] = None
     job_type: Optional[str] = None
-    work_arrangement: Optional[str]
+    work_arrangement: Optional[str] = None
     industry: Optional[str] = None
     gender: Optional[str] = None
 

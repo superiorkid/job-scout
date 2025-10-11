@@ -37,7 +37,10 @@ class JobPosting(JobPostingBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
 
     positions: List[Position] = Relationship(back_populates="job_posting")
-    specification: Optional[Specification] = Relationship(back_populates="job_posting")
+    specification: Optional[Specification] = Relationship(
+        back_populates="job_posting",
+        sa_relationship_kwargs={"uselist": False}
+    )
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

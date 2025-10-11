@@ -10,8 +10,8 @@ from sqlmodel import func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
-from app.models import JobPosting
 from app.job_posting.service import scrape_and_save
+from app.models import JobPosting
 
 openkerjaid_router = APIRouter(tags=["OpenKerja"], prefix="/openkerja")
 
@@ -28,9 +28,7 @@ async def jobs(
         total_result = await session.exec(total_stmt)
         total_count = total_result.scalar_one()
 
-        query = select(JobPosting).limit(limit).offset(offset).options(
-            selectinload(JobPosting.positions), selectinload(JobPosting.specification)
-        )
+        query = select(JobPosting).limit(limit).offset(offset)
         result = await session.exec(query)
         jobs_vacancies = result.scalars().all()
 
