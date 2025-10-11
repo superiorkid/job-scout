@@ -8,14 +8,17 @@ from urllib.parse import urljoin
 import aiohttp
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.utils.parse_date import parse_date
+from app.models import JobPosting, Specification, Position, JobProvider
+from app.constants import HEADERS
+from app.scraper.service import fetch_sitemap
 
 BASE_URL = "https://www.openkerja.id"
 SITEMAP_INDEX_URL="https://www.openkerja.id/sitemap_index.xml"
 SITEMAP_TARGET="post-sitemap"
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; OpenKerjaScraper/1.0; +https://github.com/superiorkid)"}
 AD_CLASSES = {"dlpro-banner-beforecontent", "dlpro-banner-insidecontent"}
 SEM_LIMIT = 20
 
@@ -26,30 +29,6 @@ JOB_TITLE_PATTERN = re.compile(r"^\d+\.", re.IGNORECASE)
 SUBJECT_PATTERN = re.compile(r"subject\s*[:\-]", re.IGNORECASE)
 EMAIL_PATTERN = re.compile(r"[\w\.-]+@[\w\.-]+\.\w+")
 
-async def fetch_xml(session: ClientSession, url: str) -> str:
-    async with session.get(url, headers=HEADERS) as res:
-        return await res.text()
-
-async def parse_sitemap(session: ClientSession, sitemap_url: str):
-    xml_text = await fetch_xml(session, sitemap_url)
-    soup = BeautifulSoup(xml_text, "xml")
-
-    items = []
-    for url_tag in soup.find_all("url"):
-        loc = url_tag.find("loc")
-        lastmod = url_tag.find("lastmod")
-        image_tag = url_tag.find("image:loc")
-
-        if not loc:
-            continue
-
-        items.append({
-            "url": loc.text.strip(),
-            "last_modified": lastmod.text.strip() if lastmod else None,
-            "image": image_tag.text.strip() if image_tag else None,
-        })
-
-    return items
 
 def extract_contact_from_paragraphs(desc_div: BeautifulSoup):
     paragraphs = desc_div.find_all("p")
@@ -106,31 +85,6 @@ def extract_job_sections(description_div: BeautifulSoup):
         job_sections.append(clean_title)
 
     return job_sections
-
-async def fetch_sitemap(session: ClientSession):
-    xml_text = await fetch_xml(session, SITEMAP_INDEX_URL)
-    soup = BeautifulSoup(xml_text, "xml")
-
-    # Filter only post-sitemap*.xml
-    sitemap_urls = [
-        sitemap.find("loc").text.strip()
-        for sitemap in soup.find_all("sitemap")
-        if sitemap.find("loc") and SITEMAP_TARGET in sitemap.find("loc").text
-    ]
-
-    print(f"Found {len(sitemap_urls)} post sitemaps")
-
-    tasks = [parse_sitemap(session, url) for url in sitemap_urls]
-    results = await asyncio.gather(*tasks)
-
-    all_items = [
-        item for sublist in results
-        for item in sublist
-        if item["url"].startswith(BASE_URL)
-    ]
-    all_items.sort(key=lambda x: parse_date(x["last_modified"]), reverse=True)
-
-    return all_items
 
 async def fetch_final_redirect(session: ClientSession, apply_link: str):
     final_url = urljoin(BASE_URL, apply_link)
@@ -298,6 +252,82 @@ async def fetch_with_retry(session: ClientSession, item, semaphore: Semaphore, r
                 return None
     return None
 
+async def scrape_and_save(session: AsyncSession):
+    timeout = aiohttp.ClientTimeout(total=30)
+    connector = aiohttp.TCPConnector(limit=50)
+    semaphore = asyncio.Semaphore(SEM_LIMIT)
+
+    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as http:
+        data = await fetch_sitemap(http, SITEMAP_INDEX_URL, SITEMAP_TARGET)
+        print(f"Found {len(data)} URLs to scrape...")
+
+        tasks = [fetch_with_retry(http, item, semaphore) for item in data[:10]]
+        results = await asyncio.gather(*tasks)
+
+        provider_result = await session.execute(select(JobProvider).where(JobProvider.base_url == BASE_URL))
+        provider = provider_result.scalar_one_or_none()
+
+        if not provider:
+            # create it if not exists
+            provider = JobProvider(name="OpenKerja", base_url=BASE_URL)
+            session.add(provider)
+            await session.commit()
+            await session.refresh(provider)
+
+        for result in filter(None, results):
+            query = select(JobPosting).where(JobPosting.job_url == result["url"])
+            existing_result = await session.execute(query)
+            existing = existing_result.scalar_one_or_none()
+
+            spec_data = result.get("specification") or {}
+
+            spec_instance = Specification(
+                location=spec_data.get("lokasi"),
+                education_level=spec_data.get("pendidikan"),
+                experience_level=spec_data.get("pengalaman"),
+                date_published=spec_data.get("tanggal_dipublish"),
+                job_type=spec_data.get("tipe_pekerjaan"),
+                application_deadline=spec_data.get("batas_lamaran"),
+            )
+
+            position_data_list = result.get("position_available", [])
+
+            if existing:
+                existing.company_name = result.get("company_name")
+                existing.description = result.get("description")
+                existing.image = result.get("image")
+                existing.last_modified = result.get("last_modified")
+                existing.number_of_vacancies = result.get("number_of_vacancies")
+                existing.job_provider_id = provider.id
+
+                if existing.specification:
+                    for field, value in spec_instance.model_dump(exclude_unset=True).items():
+                        setattr(existing.specification, field, value)
+                else:
+                    existing.specification = spec_instance
+
+                existing.positions.clear()
+                existing.positions.extend([Position(**p) for p in position_data_list])
+
+            else:
+                job_posting = JobPosting(
+                    job_url=result["url"],
+                    company_name=result.get("company_name"),
+                    description=result.get("description"),
+                    image=result.get("image"),
+                    last_modified=result.get("last_modified"),
+                    number_of_vacancies=result.get("number_of_vacancies"),
+                    job_provider_id=provider.id,
+                    specification=spec_instance,
+                    positions=[Position(**p) for p in position_data_list]
+                )
+                session.add(job_posting)
+
+            await session.commit()
+
+
+    print(f"\nScraped {len(results)} job posts")
+    pprint(results[0])
 
 async def main():
     start_time = time.perf_counter()

@@ -1,36 +1,39 @@
+import uuid
 from math import ceil
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from sqlmodel import func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
-from app.job_posting.service import scrape_and_save
+from app.job_posting.service import scrape_provider
 from app.models import JobPosting
 
-openkerjaid_router = APIRouter(tags=["OpenKerja"], prefix="/openkerja")
+jobs_posting_router = APIRouter(tags=["job_posting"], prefix="/jobs")
 
-@openkerjaid_router.get("/")
+@jobs_posting_router.get("/")
 async def jobs(
     session: Annotated[AsyncSession, Depends(get_session)],
+    provider_id: Optional[uuid.UUID] = Query(None),
     limit: Annotated[int, Query(gt=0, lt=100)] = 15,
     page: Annotated[int, Query(gt=0)] = 1,
 ):
     try:
         offset = (page - 1) * limit
 
-        total_stmt = select(func.count()).select_from(JobPosting)
-        total_result = await session.exec(total_stmt)
-        total_count = total_result.scalar_one()
+        statement = select(JobPosting)
+        if provider_id:
+            statement = statement.where(JobPosting.job_provider_id == provider_id)
 
-        query = select(JobPosting).limit(limit).offset(offset)
-        result = await session.exec(query)
-        jobs_vacancies = result.scalars().all()
+        total_statement  = select(func.count()).select_from(statement.subquery())
+        total_count = (await session.exec(total_statement)).scalar_one()
+
+        query = statement.limit(limit).offset(offset)
+        jobs_vacancies = (await session.exec(query)).scalars().all()
 
         total_pages = ceil(total_count / limit) if total_count else 1
 
@@ -57,15 +60,19 @@ async def jobs(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@openkerjaid_router.post("/sync")
+@jobs_posting_router.post("/sync")
 async def sync_jobs(
     background_task: BackgroundTasks,
-    session: Annotated[AsyncSession, Depends(get_session)]
+    session: Annotated[AsyncSession, Depends(get_session)],
+    provider: Optional[str] = Query(description="Provider name (optional)")
 ):
-    background_task.add_task(scrape_and_save, session)
+    if not provider:
+        raise HTTPException(status_code=400, detail="Provider name is required")
+
+    background_task.add_task(scrape_provider, provider, session)
     return JSONResponse(
         content={
             "success": True,
-            "message": "Scraping started in background",
+            "message": f"Scraping started for {provider}"
         }
     )
