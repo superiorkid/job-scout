@@ -22,6 +22,7 @@ class SpecificationBase(SQLModel):
     work_arrangement: Optional[str] = None
     industry: Optional[str] = None
     gender: Optional[str] = None
+    age: Optional[str] = None
 
 
 class JobPostingBase(SQLModel):

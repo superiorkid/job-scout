@@ -8,7 +8,6 @@ from sqlmodel import Field, Column, Relationship
 from app.job_posting.schema import JobPostingBase, SpecificationBase, PositionBase
 from app.job_provider.schema import JobProviderBase
 
-
 class Specification(SpecificationBase, table=True):
     __tablename__ = "specifications"
 
@@ -83,3 +82,4 @@ class JobPosting(JobPostingBase, table=True):
             onupdate=datetime.now(timezone.utc),
         ),
     )
+

@@ -9,6 +9,7 @@ from app.models import JobProvider
 
 PROVIDERS = [
     {"name": "OpenKerja", "base_url": "https://www.openkerja.id"},
+    {"name": "JakartaKerja", "base_url": "https://www.jakartakerja.com"},
 ]
 
 async def seed_providers():

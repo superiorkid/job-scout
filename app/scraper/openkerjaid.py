@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.constants import HEADERS
+from app.constants import HEADERS, SEM_LIMIT
 from app.models import JobPosting, Specification, Position, JobProvider
 from app.scraper.service import fetch_sitemap
 
@@ -21,7 +21,6 @@ SITEMAP_INDEX_URL="https://www.openkerja.id/sitemap_index.xml"
 SITEMAP_TARGET="post-sitemap"
 
 AD_CLASSES = {"dlpro-banner-beforecontent", "dlpro-banner-insidecontent"}
-SEM_LIMIT = 20
 
 EMAIL_REGEX = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 PHONE_REGEX = re.compile(r"(\+62|62|0)(\d{8,12})")
