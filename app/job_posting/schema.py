@@ -26,7 +26,7 @@ class SpecificationBase(SQLModel):
 
 
 class JobPostingBase(SQLModel):
-    job_url: str = Field(index=True)
+    job_url: str = Field(index=True, unique=True)
     company_name: Optional[str] = Field(default=None)
     description: Optional[str] = Field(default=None)
     image: Optional[str] = Field(default=None)

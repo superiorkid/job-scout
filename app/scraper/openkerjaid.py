@@ -11,6 +11,7 @@ from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.constants import HEADERS, SEM_LIMIT
 from app.models import JobPosting, Specification, Position, JobProvider
@@ -283,11 +284,13 @@ async def scrape_and_save(session: AsyncSession):
             )
             print(f"Found {len(data)} URLs to scrape...")
 
-            tasks = [fetch_with_retry(http, item, semaphore) for item in data[:20]]
+            tasks = [fetch_with_retry(http, item, semaphore) for item in data]
             results = await asyncio.gather(*tasks)
 
             for result in filter(None, results):
-                query = select(JobPosting).where(JobPosting.job_url == result["url"])
+                query = select(JobPosting).where(JobPosting.job_url == result["url"]).options(
+                    selectinload(JobPosting.positions), selectinload(JobPosting.specification)
+                )
                 existing_result = await session.execute(query)
                 existing = existing_result.scalar_one_or_none()
 
