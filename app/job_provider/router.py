@@ -13,22 +13,24 @@ from app.models import JobProvider
 
 job_provider_router = APIRouter(tags=["job_provider"], prefix="/providers")
 
+
 @job_provider_router.get("/")
 async def list_providers(
-    session: Annotated[AsyncSession, Depends(get_session)],
+        session: Annotated[AsyncSession, Depends(get_session)],
 ):
-  try:
-      result = await session.exec(select(JobProvider))
-      providers = result.scalars().all()
-      return JSONResponse(content={"success": True, "message": "" , "data": jsonable_encoder(providers)})
-  except Exception as e:
-      raise HTTPException(status_code=500, detail=str(e))
+    try:
+        result = await session.exec(select(JobProvider))
+        providers = result.scalars().all()
+        return JSONResponse(content={"success": True, "message": "", "data": jsonable_encoder(providers)})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @job_provider_router.post("/sync")
 async def sync_jobs(
-    background_task: BackgroundTasks,
-    session: Annotated[AsyncSession, Depends(get_session)],
-    provider_name: Optional[str] = Query(description="Provider name (optional)")
+        background_task: BackgroundTasks,
+        session: Annotated[AsyncSession, Depends(get_session)],
+        provider_name: Optional[str] = Query(description="Provider name (optional)")
 ):
     if not provider_name:
         raise HTTPException(status_code=400, detail="Provider name is required")
@@ -45,7 +47,7 @@ async def sync_jobs(
         )
 
     active_sync_query = await session.exec(
-        select(JobProvider).where(JobProvider.is_syncing == True)
+        select(JobProvider).where(JobProvider.is_syncing is True)
     )
     active_provider = active_sync_query.first()
     if active_provider:
@@ -65,8 +67,8 @@ async def sync_jobs(
 
 @job_provider_router.get("/active-sync")
 async def active_sync(
-    session: Annotated[AsyncSession, Depends(get_session)],
-    provider_id: Annotated[Optional[uuid.UUID], Query(description="Provider id (optional)")],
+        session: Annotated[AsyncSession, Depends(get_session)],
+        provider_id: Annotated[Optional[uuid.UUID], Query(description="Provider id (optional)")],
 ):
     try:
         if provider_id:
@@ -87,7 +89,7 @@ async def active_sync(
             )
 
         active_sync_query = await session.exec(
-            select(JobProvider).where(JobProvider.is_syncing == True)
+            select(JobProvider).where(JobProvider.is_syncing is True)
         )
         active_providers = active_sync_query.scalars().all()
 
@@ -109,8 +111,8 @@ async def active_sync(
 
 @job_provider_router.get("/{provider_id}")
 async def detail_provider(
-    provider_id: Annotated[uuid.UUID, Path(title="ProviderID")],
-    session: Annotated[AsyncSession, Depends(get_session)],
+        provider_id: Annotated[uuid.UUID, Path(title="ProviderID")],
+        session: Annotated[AsyncSession, Depends(get_session)],
 ):
     try:
         query = select(JobProvider).where(JobProvider.id == provider_id)

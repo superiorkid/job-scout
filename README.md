@@ -1,4 +1,4 @@
-# 🧠 Job Scout — Smart Job Aggregator
+# Job Scout
 
 Job Scout is an automated **job scraper and sync API** built with **FastAPI**, **SQLModel**, and **aiohttp**.  
 It collects job postings from multiple job provider websites and keeps them updated in your database.
@@ -26,4 +26,3 @@ It collects job postings from multiple job provider websites and keeps them upda
 - **BeautifulSoup4** — HTML parsing
 - **Uvicorn** — ASGI server
 
----
