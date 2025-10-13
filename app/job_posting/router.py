@@ -2,7 +2,7 @@ import uuid
 from math import ceil
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
@@ -10,8 +10,7 @@ from sqlmodel import func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
-from app.job_posting.service import scrape_provider
-from app.models import JobPosting, JobProvider
+from app.models import JobPosting
 
 jobs_posting_router = APIRouter(tags=["job_posting"], prefix="/jobs")
 
@@ -60,40 +59,26 @@ async def jobs(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@jobs_posting_router.post("/sync")
-async def sync_jobs(
-    background_task: BackgroundTasks,
-    session: Annotated[AsyncSession, Depends(get_session)],
-    provider: Optional[str] = Query(description="Provider name (optional)")
+@jobs_posting_router.get("/{job_id}")
+async def detail_job(
+        job_id: Annotated[uuid.UUID, Path(title="The job id")],
+        session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    if not provider:
-        raise HTTPException(status_code=400, detail="Provider name is required")
+    try:
+        query = select(JobPosting).where(JobPosting.id == job_id)
+        result = await session.exec(query)
+        job = result.scalars().first()
 
-    provider_result = await session.exec(
-        select(JobProvider).where(JobProvider.name == provider)
-    )
-    job_provider = provider_result.scalar_one_or_none()
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
 
-    if not job_provider:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Provider '{provider}' not found. Please register or seed it first."
-        )
-
-    active_sync_query = await session.exec(
-        select(JobProvider).where(JobProvider.is_syncing == True)
-    )
-    active_provider = active_sync_query.first()
-    if active_provider:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Provider '{active_provider.name}' is currently syncing. Please wait until the sync process completes before proceeding."
-        )
-
-    background_task.add_task(scrape_provider, provider, session)
-    return JSONResponse(
-        content={
+        return JSONResponse(content={
             "success": True,
-            "message": f"Scraping started for {provider}"
-        }
-    )
+            "message": "Job found",
+            "data": jsonable_encoder(job),
+        }, status_code=200)
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+
+        raise HTTPException(status_code=500, detail=str(e))
