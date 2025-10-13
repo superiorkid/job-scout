@@ -1,6 +1,6 @@
 import AppHero from "@/app/_components/app-hero";
-import JobList from "@/app/_components/job-list";
 import {JobPosting, TApiResponse} from "@/types";
+import JobList from "./_components/job-list";
 
 async function loadJobs() {
     const API_URL = 'http://localhost:8000/api/v1';
@@ -21,7 +21,6 @@ async function loadJobs() {
         return data.data;
     } catch (error) {
         console.error('Failed to load jobs:', error);
-        // Return empty array or mock data for development
         return [];
     }
 }

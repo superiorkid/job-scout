@@ -38,46 +38,43 @@ const JobCard = ({jobProvider, jobPosting, specification, positions, job}: JobCa
         <Dialog>
             <DialogTrigger asChild>
                 <div
-                    className="bg-secondary border rounded-md p-3.5 space-y-3 hover:border-blue-700 hover:cursor-pointer transition-colors duration-200">
-                    {/* Company Header with Image */}
+                    className="bg-secondary border rounded-md p-3.5 space-y-3 hover:border-blue-700 hover:cursor-pointer transition-colors duration-200"
+                >
                     <div className="flex items-start gap-3">
-                        {/* Company Logo */}
                         {job.image && (
                             <div className="flex-shrink-0">
                                 <img
                                     src={job.image}
                                     alt={`${job.company_name} logo`}
-                                    className="size-11 rounded-md object-cover border"
+                                    className="w-11 h-11 rounded-md object-cover border"
                                 />
                             </div>
                         )}
 
-                        {/* Company Info */}
                         <div className="flex-1 min-w-0">
                             <h1 className="font-semibold text-base truncate">{job.company_name}</h1>
                             <p className="text-xs text-muted-foreground mt-1">
                                 {job.number_of_vacancies === 1
-                                    ? positions[0]?.text || "Position details not available"
-                                    : `Hiring for ${job.number_of_vacancies} positions`
-                                }
+                                    ? job.positions?.[0]?.text ?? "Position details not available"
+                                    : `Hiring for ${job.number_of_vacancies} positions`}
                             </p>
                         </div>
                     </div>
 
                     <div className="flex items-center text-xs text-muted-foreground gap-3 flex-wrap">
-            <span className="flex items-center gap-1">
-                <MapPinIcon size={14}/>
-                {specification?.location || "Location not specified"}
-            </span>
-                        <span className="flex items-center gap-1">
-                <BriefcaseIcon size={14}/>
-                            {specification?.job_type || "Job type not specified"}
-            </span>
-                        {job.number_of_vacancies || 1 > 1 && (
-                            <span className="flex items-center gap-1 text-blue-600 font-medium">
-                    <UsersIcon size={14}/>
+      <span className="flex items-center gap-1 max-w-[120px] truncate">
+        <MapPinIcon size={14} className="flex-shrink-0"/>
+        <span className="truncate">{job.specification?.location ?? "-"}</span>
+      </span>
+                        <span className="flex items-center gap-1 max-w-[100px] truncate">
+        <BriefcaseIcon size={14} className="flex-shrink-0"/>
+        <span className="truncate">{job.specification?.job_type ?? "-"}</span>
+      </span>
+                        {(job.number_of_vacancies || 1) > 1 && (
+                            <span className="flex items-center gap-1 text-blue-600 font-medium whitespace-nowrap">
+          <UsersIcon size={14} className="flex-shrink-0"/>
                                 {job.number_of_vacancies} roles
-                </span>
+        </span>
                         )}
                     </div>
 
