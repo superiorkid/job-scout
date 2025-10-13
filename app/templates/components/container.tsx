@@ -6,7 +6,7 @@ const Container = (props?: React.ComponentPropsWithoutRef<"div">) => {
     const {className, children, ...restProps} = props || {}
 
     return (
-        <div className={cn("max-w-7xl mx-auto", className)} {...restProps}>
+        <div className={cn("max-w-7xl mx-auto px-5 2xl:px-0", className)} {...restProps}>
             {children}
         </div>
     );
