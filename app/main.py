@@ -10,8 +10,6 @@ app = FastAPI(
     description=settings.description,
 )
 
-
-
 app.include_router(
     job_provider_router,
     prefix=settings.api_prefix
