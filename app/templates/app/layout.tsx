@@ -5,6 +5,7 @@ import {cn} from "@/lib/utils";
 import {BriefcaseIcon} from "lucide-react";
 import {Badge} from "@/components/ui/badge";
 import Container from "@/components/container";
+import Link from "next/link";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -29,12 +30,15 @@ export default function RootLayout({
         <header className="border-b h-14 flex items-center">
             <Container className="w-full">
                 <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                        <div className="size-7 bg-blue-700 flex items-center justify-center rounded-sm">
-                            <BriefcaseIcon size={16} strokeWidth={2} className="stroke-background"/>
+                    <Link href="/">
+                        <div className="flex items-center gap-2 group hover:cursor-pointer">
+                            <div className="size-7 bg-blue-700 flex items-center justify-center rounded-sm">
+                                <BriefcaseIcon size={16} strokeWidth={2} className="stroke-background"/>
+                            </div>
+                            <span
+                                className="font-semibold text-lg tracking-tight group-hover:text-blue-800">JobScout</span>
                         </div>
-                        <span className="font-semibold text-lg tracking-tight">JobScout</span>
-                    </div>
+                    </Link>
                     <Badge variant="secondary" className="text-sm bg-zinc-200 rounded-sm h-8">Jobs</Badge>
                 </div>
             </Container>
