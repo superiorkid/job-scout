@@ -1,11 +1,38 @@
 import AppHero from "@/app/_components/app-hero";
 import JobList from "@/app/_components/job-list";
+import {JobPosting, TApiResponse} from "@/types";
 
-export default function Home() {
+async function loadJobs() {
+    const API_URL = 'http://localhost:8000/api/v1';
+
+    try {
+        const res = await fetch(`${API_URL}/jobs?limit=99&page=1`, {
+            headers: {
+                'Accept': 'application/json',
+            },
+            next: {revalidate: 60}
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const data: TApiResponse<JobPosting[]> = await res.json();
+        return data.data;
+    } catch (error) {
+        console.error('Failed to load jobs:', error);
+        // Return empty array or mock data for development
+        return [];
+    }
+}
+
+export default async function Home() {
+    const jobs = await loadJobs()
+
     return (
         <>
             <AppHero/>
-            <JobList/>
+            <JobList jobs={jobs}/>
         </>
     );
 }

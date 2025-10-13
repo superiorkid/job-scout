@@ -18,8 +18,8 @@ from app.models import JobPosting, Specification, Position, JobProvider
 from app.scraper.service import fetch_sitemap
 
 BASE_URL = "https://www.openkerja.id"
-SITEMAP_INDEX_URL="https://www.openkerja.id/sitemap_index.xml"
-SITEMAP_TARGET="post-sitemap"
+SITEMAP_INDEX_URL = "https://www.openkerja.id/sitemap_index.xml"
+SITEMAP_TARGET = "post-sitemap"
 
 AD_CLASSES = {"dlpro-banner-beforecontent", "dlpro-banner-insidecontent"}
 
@@ -44,7 +44,7 @@ def extract_contact_from_paragraphs(desc_div: BeautifulSoup):
             break
 
     # Only consider paragraphs after "Baca:"
-    contact_paragraphs = paragraphs[baca_index + 1 :] if baca_index is not None else paragraphs
+    contact_paragraphs = paragraphs[baca_index + 1:] if baca_index is not None else paragraphs
 
     email = None
     phone = None
@@ -68,6 +68,7 @@ def extract_contact_from_paragraphs(desc_div: BeautifulSoup):
 
     return email, phone
 
+
 def extract_job_sections(description_div: BeautifulSoup):
     job_sections = []
 
@@ -86,6 +87,7 @@ def extract_job_sections(description_div: BeautifulSoup):
         job_sections.append(clean_title)
 
     return job_sections
+
 
 async def fetch_final_redirect(session: ClientSession, apply_link: str):
     final_url = urljoin(BASE_URL, apply_link)
@@ -106,6 +108,7 @@ async def fetch_final_redirect(session: ClientSession, apply_link: str):
     except Exception as e:
         print(f"Failed to resolve redirect for {apply_link}: {e}")
         return None
+
 
 def clean_description_html(description_div: BeautifulSoup) -> str:
     if not description_div:
@@ -132,6 +135,7 @@ def clean_description_html(description_div: BeautifulSoup) -> str:
 
     return description_div.decode_contents().strip()
 
+
 async def fetch_apply_page(session: ClientSession, apply_url: str):
     try:
         full_url = urljoin(BASE_URL, apply_url)
@@ -156,7 +160,7 @@ async def fetch_apply_page(session: ClientSession, apply_url: str):
             ]
             for item in relative_links:
                 full_url = urljoin(full_url, item["link"])
-                final_url = await fetch_final_redirect(session,full_url)
+                final_url = await fetch_final_redirect(session, full_url)
                 item["application_contact_url"] = final_url
 
             return relative_links
@@ -164,6 +168,7 @@ async def fetch_apply_page(session: ClientSession, apply_url: str):
     except Exception as e:
         print(f"Failed to fetch apply page {apply_url}: {e}")
         return None
+
 
 async def fetch(session: ClientSession, item, semaphore: Semaphore):
     async with semaphore:
@@ -244,6 +249,7 @@ async def fetch(session: ClientSession, item, semaphore: Semaphore):
                 "position_available": position_available,
             }
 
+
 async def fetch_with_retry(session: ClientSession, item, semaphore: Semaphore, retries: int = 3):
     for attempt in range(retries):
         try:
@@ -256,6 +262,7 @@ async def fetch_with_retry(session: ClientSession, item, semaphore: Semaphore, r
                 return None
     return None
 
+
 async def scrape_and_save(session: AsyncSession):
     timeout = aiohttp.ClientTimeout(total=30)
     connector = aiohttp.TCPConnector(limit=50)
@@ -265,11 +272,11 @@ async def scrape_and_save(session: AsyncSession):
     provider = provider_result.scalar_one_or_none()
 
     if not provider:
-            # create it if not exists
-            provider = JobProvider(name="OpenKerja", base_url=BASE_URL)
-            session.add(provider)
-            await session.commit()
-            await session.refresh(provider)
+        # create it if not exists
+        provider = JobProvider(name="OpenKerja", base_url=BASE_URL)
+        session.add(provider)
+        await session.commit()
+        await session.refresh(provider)
 
     try:
         provider.is_syncing = True
@@ -284,7 +291,7 @@ async def scrape_and_save(session: AsyncSession):
             )
             print(f"Found {len(data)} URLs to scrape...")
 
-            tasks = [fetch_with_retry(http, item, semaphore) for item in data]
+            tasks = [fetch_with_retry(http, item, semaphore) for item in data[:50]]
             results = await asyncio.gather(*tasks)
 
             for result in filter(None, results):
@@ -352,6 +359,7 @@ async def scrape_and_save(session: AsyncSession):
         await session.commit()
         print(f"Sync failed for {provider.name}: {e}")
 
+
 async def main():
     start_time = time.perf_counter()
 
@@ -375,7 +383,7 @@ async def main():
     elapsed = end_time - start_time
 
     print(f"\nScraped {len(results)} job posts")
-    print(f"Total time cost: {elapsed:.2f} seconds ({elapsed/len(results):.2f}s per post)")
+    print(f"Total time cost: {elapsed:.2f} seconds ({elapsed / len(results):.2f}s per post)")
     pprint(results)
 
 

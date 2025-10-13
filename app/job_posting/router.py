@@ -14,21 +14,22 @@ from app.models import JobPosting
 
 jobs_posting_router = APIRouter(tags=["job_posting"], prefix="/jobs")
 
+
 @jobs_posting_router.get("/")
 async def jobs(
-    session: Annotated[AsyncSession, Depends(get_session)],
-    provider_id: Optional[uuid.UUID] = Query(None),
-    limit: Annotated[int, Query(gt=0, lt=100)] = 15,
-    page: Annotated[int, Query(gt=0)] = 1,
+        session: Annotated[AsyncSession, Depends(get_session)],
+        provider_id: Optional[uuid.UUID] = Query(None),
+        limit: Annotated[int, Query(gt=0, lt=100)] = 15,
+        page: Annotated[int, Query(gt=0)] = 1,
 ):
     try:
         offset = (page - 1) * limit
 
-        statement = select(JobPosting)
+        statement = select(JobPosting).order_by(JobPosting.last_modified.desc())
         if provider_id:
             statement = statement.where(JobPosting.job_provider_id == provider_id)
 
-        total_statement  = select(func.count()).select_from(statement.subquery())
+        total_statement = select(func.count()).select_from(statement.subquery())
         total_count = (await session.exec(total_statement)).scalar_one()
 
         query = statement.limit(limit).offset(offset)

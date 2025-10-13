@@ -1,11 +1,16 @@
 import React from 'react';
 import JobCard from "@/app/_components/job-card";
+import {JobPosting} from "@/types";
 
-const JobList = () => {
+interface JobListProps {
+    jobs: JobPosting[]
+}
+
+const JobList = ({jobs}: JobListProps) => {
     return (
         <section className="mt-5">
             <div className="grid grid-cols-4 gap-4">
-                {Array.from({length: 20}).map((_, index) => {
+                {jobs.map((job, index) => {
                     const positions = [
                         {
                             text: "Senior Frontend Developer",
@@ -50,7 +55,7 @@ const JobList = () => {
                     };
 
                     return (
-                        <JobCard key={index} positions={positions} jobProvider={jobProvider}
+                        <JobCard key={index} job={job} positions={positions} jobProvider={jobProvider}
                                  specification={specification} jobPosting={jobPosting}/>
                     )
                 })}

@@ -22,50 +22,67 @@ import {
 } from "lucide-react";
 import React from 'react';
 import {Button} from "@/components/ui/button";
+import {JobPosting} from "@/types";
+import {format} from 'date-fns'
 
 interface JobCardProps {
     positions: any
     jobProvider: any
     specification: any
     jobPosting: any
+    job: JobPosting
 }
 
-const JobCard = ({jobProvider, jobPosting, specification, positions}: JobCardProps) => {
+const JobCard = ({jobProvider, jobPosting, specification, positions, job}: JobCardProps) => {
     return (
         <Dialog>
             <DialogTrigger asChild>
                 <div
                     className="bg-secondary border rounded-md p-3.5 space-y-3 hover:border-blue-700 hover:cursor-pointer transition-colors duration-200">
-                    <div>
-                        <h1 className="font-semibold text-base">{jobProvider.name}</h1>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {positions.length === 1
-                                ? positions[0].text
-                                : `Hiring for ${positions.length} positions`
-                            }
-                        </p>
+                    {/* Company Header with Image */}
+                    <div className="flex items-start gap-3">
+                        {/* Company Logo */}
+                        {job.image && (
+                            <div className="flex-shrink-0">
+                                <img
+                                    src={job.image}
+                                    alt={`${job.company_name} logo`}
+                                    className="size-11 rounded-md object-cover border"
+                                />
+                            </div>
+                        )}
+
+                        {/* Company Info */}
+                        <div className="flex-1 min-w-0">
+                            <h1 className="font-semibold text-base truncate">{job.company_name}</h1>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                {job.number_of_vacancies === 1
+                                    ? positions[0]?.text || "Position details not available"
+                                    : `Hiring for ${job.number_of_vacancies} positions`
+                                }
+                            </p>
+                        </div>
                     </div>
 
-                    <div
-                        className="flex items-center text-xs text-muted-foreground gap-3 flex-wrap">
+                    <div className="flex items-center text-xs text-muted-foreground gap-3 flex-wrap">
             <span className="flex items-center gap-1">
                 <MapPinIcon size={14}/>
-                {specification.location}
+                {specification?.location || "Location not specified"}
             </span>
                         <span className="flex items-center gap-1">
                 <BriefcaseIcon size={14}/>
-                            {specification.job_type}
+                            {specification?.job_type || "Job type not specified"}
             </span>
-                        {positions.length > 1 && (
+                        {job.number_of_vacancies || 1 > 1 && (
                             <span className="flex items-center gap-1 text-blue-600 font-medium">
                     <UsersIcon size={14}/>
-                                {positions.length} roles
+                                {job.number_of_vacancies} roles
                 </span>
                         )}
                     </div>
 
                     <div className="text-xs text-muted-foreground">
-                        Apply by {specification.application_deadline}
+                        Published on {format(new Date(job.last_modified as string), "MMM dd, yyyy")}
                     </div>
                 </div>
             </DialogTrigger>

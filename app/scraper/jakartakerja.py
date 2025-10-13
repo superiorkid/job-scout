@@ -17,8 +17,9 @@ from app.scraper.service import fetch_sitemap, decode_cf_email
 
 BASE_URL = "https://www.jakartakerja.com"
 
-SITEMAP_INDEX_URL="https://www.jakartakerja.com/sitemap_index.xml"
-SITEMAP_TARGET="lowongan-sitemap"
+SITEMAP_INDEX_URL = "https://www.jakartakerja.com/sitemap_index.xml"
+SITEMAP_TARGET = "lowongan-sitemap"
+
 
 async def fetch_with_retry(session: ClientSession, item, semaphore: Semaphore, retries: int = 3):
     for attempt in range(retries):
@@ -166,7 +167,7 @@ async def scrape_and_save(session: AsyncSession):
             )
             print(f"Found {len(data)} URLs to scrape...")
 
-            tasks = [fetch_with_retry(http, item, semaphore) for item in data]
+            tasks = [fetch_with_retry(http, item, semaphore) for item in data[:50]]
             results = await asyncio.gather(*tasks)
 
             for result in filter(None, results):
@@ -237,9 +238,11 @@ async def scrape_and_save(session: AsyncSession):
 def safe_text(element):
     return element.get_text(strip=True) if element else None
 
+
 def next_li_text(container: BeautifulSoup, selector: str):
     el = container.find("li", class_=selector)
     return safe_text(el.find_next_sibling("li")) if el and el.find_next_sibling("li") else None
+
 
 async def main():
     start_time = time.perf_counter()
@@ -264,7 +267,7 @@ async def main():
     elapsed = end_time - start_time
 
     print(f"\nScraped {len(results)} job posts")
-    print(f"Total time cost: {elapsed:.2f} seconds ({elapsed/len(results):.2f}s per post)")
+    print(f"Total time cost: {elapsed:.2f} seconds ({elapsed / len(results):.2f}s per post)")
     pprint(results)
 
 
