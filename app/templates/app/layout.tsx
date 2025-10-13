@@ -43,7 +43,7 @@ export default function RootLayout({
                 </div>
             </Container>
         </header>
-        <main>
+        <main className="mb-7">
             <Container>
                 {children}
             </Container>
