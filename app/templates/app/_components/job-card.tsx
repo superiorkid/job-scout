@@ -6,94 +6,159 @@ import {
     DialogOverlay,
     DialogTrigger
 } from "@/components/ui/dialog";
-import {
-    BriefcaseIcon,
-    CalendarIcon,
-    ClockIcon,
-    ExternalLinkIcon,
-    GlobeIcon,
-    GraduationCapIcon,
-    HomeIcon,
-    MailIcon,
-    MapPinIcon,
-    PhoneIcon,
-    TrendingUpIcon,
-    UsersIcon
-} from "lucide-react";
+import {BriefcaseIcon, CalendarIcon, ClockIcon, HomeIcon, MapPinIcon, TrendingUpIcon, UsersIcon} from "lucide-react";
 import React from 'react';
-import {Button} from "@/components/ui/button";
-import {JobPosting} from "@/types";
+import {JobPosting, Specification} from "@/types";
 import {format} from 'date-fns'
+import JobDetails from "@/app/_components/job-details";
+import Image from "next/image";
+import {getSalaryDisplay} from "@/lib/utils";
+import JobSpecification from "@/app/_components/job-specification";
+import PositionCard from "@/app/_components/position-card";
 
 interface JobCardProps {
-    positions: any
-    jobProvider: any
-    specification: any
-    jobPosting: any
     job: JobPosting
 }
 
-const JobCard = ({jobProvider, jobPosting, specification, positions, job}: JobCardProps) => {
+const JobCard = ({job}: JobCardProps) => {
     return (
         <Dialog>
             <DialogTrigger asChild>
                 <div
-                    className="bg-secondary border rounded-md p-3.5 space-y-3 hover:border-blue-700 hover:cursor-pointer transition-colors duration-200"
+                    className="bg-card border rounded-lg p-4 space-y-3 hover:border-blue-600 hover:shadow-sm hover:bg-accent/40 cursor-pointer transition-all duration-200 group"
                 >
                     <div className="flex items-start gap-3">
                         {job.image && (
-                            <div className="flex-shrink-0">
-                                <img
+                            <div
+                                className="relative size-11 flex-shrink-0 border rounded-md overflow-hidden group-hover:border-blue-400 transition-colors">
+                                <Image
+                                    fill
                                     src={job.image}
                                     alt={`${job.company_name} logo`}
-                                    className="w-11 h-11 rounded-md object-cover border"
+                                    className="object-cover"
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                    loading="lazy"
+                                    decoding="async"
                                 />
                             </div>
                         )}
 
                         <div className="flex-1 min-w-0">
-                            <h1 className="font-semibold text-base truncate">{job.company_name}</h1>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                {job.number_of_vacancies === 1
-                                    ? job.positions?.[0]?.text ?? "Position details not available"
-                                    : `Hiring for ${job.number_of_vacancies} positions`}
-                            </p>
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                    <h1 className="font-semibold text-base truncate text-foreground group-hover:text-blue-700 transition-colors">
+                                        {job.company_name}
+                                    </h1>
+                                    <p className="text-sm text-muted-foreground mt-0.5">
+                                        {job.number_of_vacancies === 1
+                                            ? job.positions?.[0]?.text ?? "Position details not available"
+                                            : `Hiring for ${job.number_of_vacancies} positions`}
+                                    </p>
+                                </div>
+
+                                {job.positions?.some(p => p.salary) && (
+                                    <div className="flex-shrink-0">
+                                        <div
+                                            className="border rounded-md px-2 py-1 bg-emerald-50/60 border-emerald-200">
+                                            <div className="text-xs text-emerald-700 font-semibold whitespace-nowrap">
+                                                {getSalaryDisplay(job.positions)}
+                                            </div>
+                                            <div className="text-[10px] text-emerald-500">Salary</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center text-xs text-muted-foreground gap-3 flex-wrap">
-      <span className="flex items-center gap-1 max-w-[120px] truncate">
-        <MapPinIcon size={14} className="flex-shrink-0"/>
-        <span className="truncate">{job.specification?.location ?? "-"}</span>
-      </span>
-                        <span className="flex items-center gap-1 max-w-[100px] truncate">
-        <BriefcaseIcon size={14} className="flex-shrink-0"/>
-        <span className="truncate">{job.specification?.job_type ?? "-"}</span>
-      </span>
-                        {(job.number_of_vacancies || 1) > 1 && (
-                            <span className="flex items-center gap-1 text-blue-600 font-medium whitespace-nowrap">
-          <UsersIcon size={14} className="flex-shrink-0"/>
-                                {job.number_of_vacancies} roles
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div
+                            className="flex items-center gap-1 px-2 py-1 border rounded-md text-xs text-muted-foreground">
+                            <MapPinIcon size={12} className="text-blue-500"/>
+                            <span className="truncate max-w-[80px]">
+          {job.specification?.location ?? "Remote"}
         </span>
+                        </div>
+
+                        <div
+                            className="flex items-center gap-1 px-2 py-1 border rounded-md text-xs text-muted-foreground">
+                            <BriefcaseIcon size={12} className="text-purple-500"/>
+                            <span className="truncate max-w-[80px]">
+          {job.specification?.job_type ?? "Full-time"}
+        </span>
+                        </div>
+
+                        {job.specification?.experience_level && (
+                            <div
+                                className="flex items-center gap-1 px-2 py-1 border rounded-md text-xs text-muted-foreground">
+                                <TrendingUpIcon size={12} className="text-orange-500"/>
+                                <span className="truncate max-w-[80px]">
+            {job.specification.experience_level}
+          </span>
+                            </div>
+                        )}
+
+                        {job.specification?.work_arrangement && (
+                            <div
+                                className="flex items-center gap-1 px-2 py-1 border rounded-md text-xs text-muted-foreground">
+                                <HomeIcon size={12} className="text-green-500"/>
+                                <span className="truncate max-w-[80px]">
+            {job.specification.work_arrangement}
+          </span>
+                            </div>
+                        )}
+
+                        {(job.number_of_vacancies || 1) > 1 && (
+                            <div
+                                className="flex items-center gap-1 px-2 py-1 border rounded-md text-xs text-muted-foreground">
+                                <UsersIcon size={12} className="text-blue-500"/>
+                                <span>{job.number_of_vacancies} roles</span>
+                            </div>
                         )}
                     </div>
 
-                    <div className="text-xs text-muted-foreground">
-                        Published on {format(new Date(job.last_modified as string), "MMM dd, yyyy")}
+                    <div
+                        className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border">
+                        <div className="flex items-center gap-3">
+                            {job.specification?.application_deadline && (
+                                <div className="flex items-center gap-1">
+                                    <ClockIcon size={12}/>
+                                    <span>Apply by {job.specification.application_deadline}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                            <CalendarIcon size={12}/>
+                            <span>{format(new Date(job.last_modified as string), "MMM dd, yyyy")}</span>
+                        </div>
                     </div>
                 </div>
             </DialogTrigger>
+
             <DialogOverlay className="bg-black/35 backdrop-blur-sm"/>
             <DialogContent className="min-w-[48rem] max-h-[80dvh] overflow-y-auto">
                 <DialogHeader className="contents">
                     <DialogDescription className="flex items-center gap-2 text-sm">
-                                            <span
-                                                className="text-foreground font-semibold text-base">{jobProvider.name}</span>
-                        {positions.length > 1 && (
+                        {job.image && (
+                            <div className="relative size-6 rounded-sm overflow-hidden">
+                                <Image
+                                    fill
+                                    src={job.image}
+                                    alt={`${job.company_name} logo`}
+                                    className="object-cover"
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                            </div>
+                        )}
+                        <span className="text-foreground font-semibold text-base">{job.company_name}</span>
+                        {(job.number_of_vacancies || 1) > 1 && (
                             <>
                                 <span>•</span>
                                 <span
-                                    className="text-blue-600 font-medium">{positions.length} positions available</span>
+                                    className="text-blue-600 font-medium">{job.number_of_vacancies} positions available</span>
                             </>
                         )}
                     </DialogDescription>
@@ -102,166 +167,23 @@ const JobCard = ({jobProvider, jobPosting, specification, positions, job}: JobCa
                 <div className="space-y-6">
                     <div className="space-y-3">
                         <h2 className="text-sm font-semibold text-foreground">Job Details</h2>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="flex gap-3 text-sm">
-                                <MapPinIcon className="mt-0.5 stroke-muted-foreground flex-shrink-0"
-                                            size={18}/>
-                                <div className="space-y-1">
-                                    <h5 className="text-muted-foreground text-xs">Location</h5>
-                                    <p className="font-medium">{specification.location}</p>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3 text-sm">
-                                <BriefcaseIcon
-                                    className="mt-0.5 stroke-muted-foreground flex-shrink-0"
-                                    size={18}/>
-                                <div className="space-y-1">
-                                    <h5 className="text-muted-foreground text-xs">Job Type</h5>
-                                    <p className="font-medium">{specification.job_type}</p>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3 text-sm">
-                                <TrendingUpIcon
-                                    className="mt-0.5 stroke-muted-foreground flex-shrink-0"
-                                    size={18}/>
-                                <div className="space-y-1">
-                                    <h5 className="text-muted-foreground text-xs">Experience</h5>
-                                    <p className="font-medium">{specification.experience_level}</p>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3 text-sm">
-                                <GraduationCapIcon
-                                    className="mt-0.5 stroke-muted-foreground flex-shrink-0"
-                                    size={18}/>
-                                <div className="space-y-1">
-                                    <h5 className="text-muted-foreground text-xs">Education</h5>
-                                    <p className="font-medium">{specification.education_level}</p>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3 text-sm">
-                                <HomeIcon className="mt-0.5 stroke-muted-foreground flex-shrink-0"
-                                          size={18}/>
-                                <div className="space-y-1">
-                                    <h5 className="text-muted-foreground text-xs">Work
-                                        Arrangement</h5>
-                                    <p className="font-medium">{specification.work_arrangement}</p>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3 text-sm">
-                                <CalendarIcon
-                                    className="mt-0.5 stroke-muted-foreground flex-shrink-0"
-                                    size={18}/>
-                                <div className="space-y-1">
-                                    <h5 className="text-muted-foreground text-xs">Application
-                                        Deadline</h5>
-                                    <p className="font-medium">{specification.application_deadline}</p>
-                                </div>
-                            </div>
-                        </div>
+                        <JobSpecification specification={job.specification as Specification}/>
                     </div>
 
                     <div className="space-y-3">
                         <h2 className="text-sm font-semibold text-foreground">
-                            Available Positions ({positions.length})
+                            Available Positions ({job.number_of_vacancies})
                         </h2>
                         <div className="space-y-3">
-                            {/*@ts-expect-error: any*/}
-                            {positions.map((position, positionIndex) => (
-                                <div key={positionIndex}
-                                     className="border rounded-lg p-4 space-y-3 hover:border-blue-300 transition-colors">
-                                    <div className="flex justify-between items-start">
-                                        <h3 className="font-medium text-base">{position.text}</h3>
-                                        {position.salary && (
-                                            <span
-                                                className="text-sm font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded">
-                                    {position.salary}
-                                </span>
-                                        )}
-                                    </div>
-
-                                    <div
-                                        className="flex gap-4 text-xs text-muted-foreground flex-wrap">
-                                        {position.application_contact_email && (
-                                            <span className="flex items-center gap-1">
-                                    <MailIcon size={14}/>
-                                                {position.application_contact_email}
-                                </span>
-                                        )}
-                                        {position.application_contact_phone && (
-                                            <span className="flex items-center gap-1">
-                                    <PhoneIcon size={14}/>
-                                                {position.application_contact_phone}
-                                </span>
-                                        )}
-                                    </div>
-
-                                    <div className="flex gap-2">
-                                        <Button size="sm"
-                                                className="bg-blue-700 hover:bg-blue-800 text-white">
-                                            <ExternalLinkIcon size={14} className="mr-1"/>
-                                            Apply for this role
-                                        </Button>
-                                    </div>
-                                </div>
+                            {job.positions.map((position, index) => (
+                                <PositionCard key={index} position={position}/>
                             ))}
                         </div>
                     </div>
 
-                    <div className="space-y-3 text-sm">
-                        <h2 className="font-semibold text-foreground">Job Description</h2>
-                        <div className="prose prose-sm max-w-none text-foreground">
-                            <p className="leading-relaxed">
-                                {jobPosting.description}
-                            </p>
 
-                            <div className="mt-4">
-                                <h4 className="font-medium mb-2">Key Responsibilities:</h4>
-                                <ul className="list-disc list-inside space-y-1 ml-2">
-                                    <li>Architect and implement robust backend systems</li>
-                                    <li>Collaborate with cross-functional teams to deliver
-                                        high-quality products
-                                    </li>
-                                    <li>Mentor junior developers and conduct code reviews</li>
-                                    <li>Participate in technical decision-making and architecture
-                                        planning
-                                    </li>
-                                </ul>
-                            </div>
+                    <JobDetails description={job.description || ""}/>
 
-                            <div className="mt-4">
-                                <h4 className="font-medium mb-2">Requirements:</h4>
-                                <ul className="list-disc list-inside space-y-1 ml-2">
-                                    <li>5+ years of experience in software development</li>
-                                    <li>Strong proficiency in TypeScript, React, and Node.js</li>
-                                    <li>Experience with cloud platforms (AWS/GCP)</li>
-                                    <li>Excellent problem-solving and communication skills</li>
-                                    <li>Bachelor's degree in Computer Science or related field</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="border-t pt-4 space-y-3">
-                        <h2 className="text-sm font-semibold text-foreground">About {jobProvider.name}</h2>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            {jobProvider.description}
-                        </p>
-                        <div className="flex gap-4 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                    <GlobeIcon size={14}/>
-                    {jobProvider.base_url}
-                </span>
-                            <span className="flex items-center gap-1">
-                    <ClockIcon size={14}/>
-                    Last updated: {jobPosting.last_modified}
-                </span>
-                        </div>
-                    </div>
                 </div>
             </DialogContent>
         </Dialog>

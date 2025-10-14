@@ -2,7 +2,6 @@ import asyncio
 import time
 from asyncio import Semaphore
 from datetime import datetime, timezone
-from pprint import pprint
 
 import aiohttp
 from aiohttp import ClientSession
@@ -56,10 +55,10 @@ async def fetch(session: ClientSession, item, semaphore: Semaphore):
                     image = container.find("img", class_="attachment-thumb100").get("src")
 
                 html_blocks = []
-                for h2 in container.find_all("h2"):
-                    next_span = h2.find_next_sibling("span", class_="loker-detail")
-                    if next_span:
-                        html_blocks.append(str(h2) + str(next_span))
+                for span in container.find_all("span", class_="loker-detail"):
+                    h2 = span.find_previous("h2")
+                    if h2:
+                        html_blocks.append(str(h2) + str(span))
                 description = "\n".join(html_blocks) if html_blocks else None
 
                 # Specification
@@ -259,7 +258,7 @@ async def main():
         )
         print(f"Found {len(data)} URLs to scrape...")
 
-        tasks = [fetch_with_retry(session, item, semaphore) for item in data[:15]]
+        tasks = [fetch_with_retry(session, item, semaphore) for item in data[:1]]
         results = await asyncio.gather(*tasks)
         results = [r for r in results if r]
 
