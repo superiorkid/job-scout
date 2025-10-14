@@ -4,20 +4,32 @@ import {
     DialogDescription,
     DialogHeader,
     DialogOverlay,
-    DialogTrigger
+    DialogTrigger,
 } from "@/components/ui/dialog";
-import {BriefcaseIcon, CalendarIcon, ClockIcon, HomeIcon, MapPinIcon, TrendingUpIcon, UsersIcon} from "lucide-react";
-import React from 'react';
+import {
+    BriefcaseIcon,
+    CalendarIcon,
+    ClockIcon,
+    ExternalLinkIcon,
+    HomeIcon,
+    MapPinIcon,
+    TrendingUpIcon,
+    UsersIcon,
+} from "lucide-react";
+import React from "react";
 import {JobPosting, Specification} from "@/types";
-import {format} from 'date-fns'
+import {format} from "date-fns";
 import JobDetails from "@/app/_components/job-details";
 import Image from "next/image";
 import {getSalaryDisplay} from "@/lib/utils";
 import JobSpecification from "@/app/_components/job-specification";
 import PositionCard from "@/app/_components/position-card";
+import {Button} from "@/components/ui/button";
+import Link from "next/link";
+import {Route} from "next";
 
 interface JobCardProps {
-    job: JobPosting
+    job: JobPosting;
 }
 
 const JobCard = ({job}: JobCardProps) => {
@@ -25,8 +37,7 @@ const JobCard = ({job}: JobCardProps) => {
         <Dialog>
             <DialogTrigger asChild>
                 <div
-                    className="bg-card border rounded-lg p-4 space-y-3 hover:border-blue-600 hover:shadow-sm hover:bg-accent/40 cursor-pointer transition-all duration-200 group"
-                >
+                    className="bg-card border rounded-lg p-4 space-y-3 hover:border-blue-600 hover:shadow-sm hover:bg-accent/40 cursor-pointer transition-all duration-200 group">
                     <div className="flex items-start gap-3">
                         {job.image && (
                             <div
@@ -51,12 +62,13 @@ const JobCard = ({job}: JobCardProps) => {
                                     </h1>
                                     <p className="text-sm text-muted-foreground mt-0.5">
                                         {job.number_of_vacancies === 1
-                                            ? job.positions?.[0]?.text ?? "Position details not available"
+                                            ? job.positions?.[0]?.text ??
+                                            "Position details not available"
                                             : `Hiring for ${job.number_of_vacancies} positions`}
                                     </p>
                                 </div>
 
-                                {job.positions?.some(p => p.salary) && (
+                                {job.positions?.some((p) => p.salary) && (
                                     <div className="flex-shrink-0">
                                         <div
                                             className="border rounded-md px-2 py-1 bg-emerald-50/60 border-emerald-200">
@@ -76,16 +88,16 @@ const JobCard = ({job}: JobCardProps) => {
                             className="flex items-center gap-1 px-2 py-1 border rounded-md text-xs text-muted-foreground">
                             <MapPinIcon size={12} className="text-blue-500"/>
                             <span className="truncate max-w-[80px]">
-          {job.specification?.location ?? "Remote"}
-        </span>
+                {job.specification?.location ?? "Remote"}
+              </span>
                         </div>
 
                         <div
                             className="flex items-center gap-1 px-2 py-1 border rounded-md text-xs text-muted-foreground">
                             <BriefcaseIcon size={12} className="text-purple-500"/>
                             <span className="truncate max-w-[80px]">
-          {job.specification?.job_type ?? "Full-time"}
-        </span>
+                {job.specification?.job_type ?? "Full-time"}
+              </span>
                         </div>
 
                         {job.specification?.experience_level && (
@@ -93,8 +105,8 @@ const JobCard = ({job}: JobCardProps) => {
                                 className="flex items-center gap-1 px-2 py-1 border rounded-md text-xs text-muted-foreground">
                                 <TrendingUpIcon size={12} className="text-orange-500"/>
                                 <span className="truncate max-w-[80px]">
-            {job.specification.experience_level}
-          </span>
+                  {job.specification.experience_level}
+                </span>
                             </div>
                         )}
 
@@ -103,8 +115,8 @@ const JobCard = ({job}: JobCardProps) => {
                                 className="flex items-center gap-1 px-2 py-1 border rounded-md text-xs text-muted-foreground">
                                 <HomeIcon size={12} className="text-green-500"/>
                                 <span className="truncate max-w-[80px]">
-            {job.specification.work_arrangement}
-          </span>
+                  {job.specification.work_arrangement}
+                </span>
                             </div>
                         )}
 
@@ -130,7 +142,9 @@ const JobCard = ({job}: JobCardProps) => {
 
                         <div className="flex items-center gap-1">
                             <CalendarIcon size={12}/>
-                            <span>{format(new Date(job.last_modified as string), "MMM dd, yyyy")}</span>
+                            <span>
+                {format(new Date(job.last_modified as string), "MMM dd, yyyy")}
+              </span>
                         </div>
                     </div>
                 </div>
@@ -153,21 +167,55 @@ const JobCard = ({job}: JobCardProps) => {
                                 />
                             </div>
                         )}
-                        <span className="text-foreground font-semibold text-base">{job.company_name}</span>
+                        <span className="text-foreground font-semibold text-base">
+              {job.company_name}
+            </span>
                         {(job.number_of_vacancies || 1) > 1 && (
                             <>
                                 <span>•</span>
-                                <span
-                                    className="text-blue-600 font-medium">{job.number_of_vacancies} positions available</span>
+                                <span className="text-blue-600 font-medium">
+                  {job.number_of_vacancies} positions available
+                </span>
                             </>
                         )}
                     </DialogDescription>
                 </DialogHeader>
 
+                {job.job_url && (
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center gap-2">
+                            <ExternalLinkIcon size={16} className="text-blue-600"/>
+                            <span className="text-sm text-blue-700 font-medium">
+                Original Job Post
+              </span>
+                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                            asChild
+                        >
+                            <Link
+                                href={job.job_url as Route<string>}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1"
+                            >
+                                <ExternalLinkIcon size={14}/>
+                                Visit Source
+                            </Link>
+                        </Button>
+                    </div>
+                )}
+
                 <div className="space-y-6">
                     <div className="space-y-3">
-                        <h2 className="text-sm font-semibold text-foreground">Job Details</h2>
-                        <JobSpecification specification={job.specification as Specification}/>
+                        <h2 className="text-sm font-semibold text-foreground">
+                            Job Details
+                        </h2>
+                        <JobSpecification
+                            specification={job.specification as Specification}
+                        />
                     </div>
 
                     <div className="space-y-3">
@@ -181,9 +229,7 @@ const JobCard = ({job}: JobCardProps) => {
                         </div>
                     </div>
 
-
                     <JobDetails description={job.description || ""}/>
-
                 </div>
             </DialogContent>
         </Dialog>

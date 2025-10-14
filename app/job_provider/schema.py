@@ -51,6 +51,7 @@ class ProviderRead(SQLModel):
 
 class JobPostingRead(SQLModel):
     id: uuid.UUID
+    job_url: str
     company_name: Optional[str]
     description: Optional[str]
     image: Optional[str]
