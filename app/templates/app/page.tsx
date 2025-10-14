@@ -3,10 +3,8 @@ import {JobPosting, TApiResponse} from "@/types";
 import JobList from "./_components/job-list";
 
 async function loadJobs() {
-    const API_URL = 'http://localhost:8000/api/v1';
-
     try {
-        const res = await fetch(`${API_URL}/jobs?limit=99&page=1`, {
+        const res = await fetch(`${process.env.API_URL}/jobs?limit=99&page=1`, {
             headers: {
                 'Accept': 'application/json',
             },
