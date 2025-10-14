@@ -1,8 +1,8 @@
-import React from 'react';
+import React, {Suspense} from 'react';
 import {BriefcaseIcon, SearchIcon} from "lucide-react";
 import {Input} from "@/components/ui/input";
-import {Tabs, TabsList, TabsTrigger} from "@/components/ui/tabs";
 import FilterDropdown from "@/app/_components/filter-dropdown";
+import ProviderTabs from "@/app/_components/provider-tabs";
 
 const AppHero = () => {
     return (
@@ -26,28 +26,9 @@ const AppHero = () => {
                 </div>
             </div>
             <div>
-                <Tabs defaultValue="all">
-                    <TabsList className="bg-transparent flex gap-2.5 items-center">
-                        <TabsTrigger
-                            value="all"
-                            className="rounded-lg data-[state=active]:bg-blue-700 data-[state=active]:text-primary-foreground data-[state=active]:shadow-none h-7 text-xs border border-zinc-200"
-                        >
-                            All Jobs
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="openkerja"
-                            className="rounded-lg data-[state=active]:bg-blue-700 data-[state=active]:text-primary-foreground data-[state=active]:shadow-none h-7 text-xs border border-zinc-200"
-                        >
-                            Open Kerja
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="jakartakerja"
-                            className="rounded-lg data-[state=active]:bg-blue-700 data-[state=active]:text-primary-foreground data-[state=active]:shadow-none h-7 text-xs border border-zinc-200"
-                        >
-                            Jakarta Kerja
-                        </TabsTrigger>
-                    </TabsList>
-                </Tabs>
+                <Suspense>
+                    <ProviderTabs/>
+                </Suspense>
             </div>
             <div>
                 <FilterDropdown/>

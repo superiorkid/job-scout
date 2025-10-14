@@ -1,4 +1,5 @@
 import uuid
+from enum import Enum
 from math import ceil
 from typing import Annotated, Optional
 
@@ -12,9 +13,15 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
 from app.job_provider.schema import JobPostingRead
-from app.models import JobPosting
+from app.models import JobPosting, JobProvider
 
 jobs_posting_router = APIRouter(tags=["job_posting"], prefix="/jobs")
+
+
+class ProviderEnum(str, Enum):
+    AllJobs = "AllJobs"
+    JakartaKerja = "JakartaKerja"
+    OpenKerja = "OpenKerja"
 
 
 @jobs_posting_router.get("/", response_model=dict)
@@ -23,6 +30,7 @@ async def jobs(
         provider_id: Optional[uuid.UUID] = Query(None),
         limit: Annotated[int, Query(gt=0, le=100)] = 15,
         page: Annotated[int, Query(gt=0)] = 1,
+        provider: Annotated[ProviderEnum, Query()] = ProviderEnum.AllJobs,  # default задаётся через '='
 ):
     try:
         offset = (page - 1) * limit
@@ -36,6 +44,9 @@ async def jobs(
             )
             .order_by(JobPosting.last_modified.desc())
         )
+
+        if provider != ProviderEnum.AllJobs:
+            statement = statement.join(JobPosting.provider).where(JobProvider.name == provider)
 
         if provider_id:
             statement = statement.where(JobPosting.job_provider_id == provider_id)
