@@ -1,7 +1,7 @@
 import React, {Suspense} from 'react';
-import {BriefcaseIcon, SearchIcon} from "lucide-react";
-import {Input} from "@/components/ui/input";
+import {BriefcaseIcon} from "lucide-react";
 import ProviderTabs from "@/app/_components/provider-tabs";
+import AppSearch from "@/app/_components/app-search";
 
 const AppHero = () => {
     return (
@@ -13,17 +13,8 @@ const AppHero = () => {
                 </div>
                 <span className="text-sm text-muted-foreground">20 jobs</span>
             </div>
-            <div className="relative">
-                <Input
-                    className="peer ps-9 bg-zinc-100 focus-visible:ring-blue-700 focus-visible:ring-1"
-                    placeholder="Search jobs by title, company, or location..."
-                    type="text"
-                />
-                <div
-                    className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
-                    <SearchIcon size={16}/>
-                </div>
-            </div>
+            <AppSearch/>
+
             <div>
                 <Suspense>
                     <ProviderTabs/>
