@@ -32,7 +32,7 @@ export default function RootLayout({
 
         <NuqsAdapter>
             <QueryClientProvider>
-                <header className="border-b h-14 flex items-center">
+                <header className="border-b h-14 flex items-center sticky top-0 z-10 backdrop-blur-lg">
                     <Container className="w-full">
                         <div className="flex items-center gap-6">
                             <Link href="/">

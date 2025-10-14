@@ -37,7 +37,7 @@ const JobCard = ({job}: JobCardProps) => {
         <Dialog>
             <DialogTrigger asChild>
                 <div
-                    className="bg-card border rounded-lg p-4 space-y-3 hover:border-blue-600 hover:shadow-sm hover:bg-accent/40 cursor-pointer transition-all duration-200 group">
+                    className="bg-card border rounded-lg p-4 space-y-3 hover:border-blue-600 hover:shadow-sm hover:bg-accent/40 cursor-pointer transition-all duration-200 group overflow-hidden">
                     <div className="flex items-start gap-3">
                         {job.image && (
                             <div
@@ -60,7 +60,7 @@ const JobCard = ({job}: JobCardProps) => {
                                     <h1 className="font-semibold text-base truncate text-foreground group-hover:text-blue-700 transition-colors">
                                         {job.company_name}
                                     </h1>
-                                    <p className="text-sm text-muted-foreground mt-0.5">
+                                    <p className="text-sm text-muted-foreground mt-0.5 truncate">
                                         {job.number_of_vacancies === 1
                                             ? job.positions?.[0]?.text ??
                                             "Position details not available"
