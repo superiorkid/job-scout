@@ -1,7 +1,6 @@
 import React, {Suspense} from 'react';
 import {BriefcaseIcon, SearchIcon} from "lucide-react";
 import {Input} from "@/components/ui/input";
-import FilterDropdown from "@/app/_components/filter-dropdown";
 import ProviderTabs from "@/app/_components/provider-tabs";
 
 const AppHero = () => {
@@ -29,9 +28,6 @@ const AppHero = () => {
                 <Suspense>
                     <ProviderTabs/>
                 </Suspense>
-            </div>
-            <div>
-                <FilterDropdown/>
             </div>
         </section>
     );

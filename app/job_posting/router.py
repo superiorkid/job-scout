@@ -12,8 +12,9 @@ from sqlmodel import func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
+from app.job_posting.service import unique_values
 from app.job_provider.schema import JobPostingRead
-from app.models import JobPosting, JobProvider
+from app.models import JobPosting, JobProvider, Specification
 
 jobs_posting_router = APIRouter(tags=["job_posting"], prefix="/jobs")
 
@@ -77,9 +78,24 @@ async def jobs(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@jobs_posting_router.get("/debug-model")
-async def debug_model():
-    return list(JobPosting.__mapper__.relationships.keys())
+@jobs_posting_router.get("/filters")
+async def get_job_filters(
+        session: Annotated[AsyncSession, Depends(get_session)],
+):
+    query = select(Specification)
+    results = await session.exec(query)
+    specifications = results.scalars().all()
+
+    return {
+        "success": True,
+        "message": "",
+        "data": {
+            "job_type": unique_values(specifications, "job_type"),
+            "work_arrangement": unique_values(specifications, "work_arrangement"),
+            "experience_level": unique_values(specifications, "experience_level"),
+            "location": unique_values(specifications, "location"),
+        }
+    }
 
 
 @jobs_posting_router.get("/{job_id}")
