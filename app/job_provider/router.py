@@ -8,6 +8,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.responses import JSONResponse
 
 from app.database import get_session
+from app.job_posting.router import ProviderEnum
 from app.job_provider.service import scrape_provider
 from app.models import JobProvider
 
@@ -30,7 +31,10 @@ async def list_providers(
 async def sync_jobs(
         background_task: BackgroundTasks,
         session: Annotated[AsyncSession, Depends(get_session)],
-        provider_name: Optional[str] = Query(description="Provider name (optional)")
+        provider_name: Optional[ProviderEnum] = Query(
+            None,
+            description="Select a job provider to sync",
+        ),
 ):
     if not provider_name:
         raise HTTPException(status_code=400, detail="Provider name is required")

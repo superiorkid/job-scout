@@ -30,7 +30,7 @@ async def jobs(
         provider_id: Optional[uuid.UUID] = Query(None),
         limit: Annotated[int, Query(gt=0, le=100)] = 15,
         page: Annotated[int, Query(gt=0)] = 1,
-        provider: Annotated[ProviderEnum, Query()] = ProviderEnum.AllJobs,  # default задаётся через '='
+        provider: Annotated[ProviderEnum, Query()] = ProviderEnum.AllJobs,
 ):
     try:
         offset = (page - 1) * limit
