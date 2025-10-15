@@ -3,14 +3,16 @@
 import {Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,} from "@/components/ui/empty";
 import {Button} from "@/components/ui/button";
 import {Spinner} from "@/components/ui/spinner";
-import {BriefcaseIcon, TriangleAlertIcon} from "lucide-react";
+import {BriefcaseIcon, Loader2Icon, TriangleAlertIcon} from "lucide-react";
 import {parseAsStringEnum, useQueryState} from "nuqs";
 import {ProviderEnum} from "@/enums/provider-enum";
-import {useQuery} from "@tanstack/react-query";
-import {jobKeys} from "@/lib/query-keys";
-import axiosInstance from "@/lib/http-client";
-import {JobPosting, TApiResponse} from "@/types";
 import JobCard from "@/app/_components/job-card";
+import {useInfiniteQuery} from "@tanstack/react-query";
+import {jobKeys} from "@/lib/query-keys";
+import {JobPosting, TApiResponse} from "@/types";
+import axiosInstance from "@/lib/http-client";
+import {useInView} from "react-intersection-observer";
+import {useEffect} from 'react'
 
 const JobList = () => {
     const [provider] = useQueryState<ProviderEnum>(
@@ -20,17 +22,38 @@ const JobList = () => {
         )
     );
 
-    const initialParams = {page: 1, limit: 25} as const;
-
-    const {data: jobs, isPending, isError, error, refetch} = useQuery({
+    const initialParams = {limit: 18} as const;
+    const {data, isPending, fetchNextPage, hasNextPage, isFetchingNextPage, isError, error} = useInfiniteQuery({
         queryKey: jobKeys.allWithParams({...initialParams, provider}),
-        queryFn: async () => {
-            const res = await axiosInstance.get<TApiResponse<JobPosting[]>>("/jobs/", {
-                params: {...initialParams, provider},
-            });
-            return res.data;
+        queryFn: async ({pageParam = 1}) => {
+            const res = await axiosInstance.get<TApiResponse<JobPosting[]>>("/jobs", {
+                params: {
+                    ...initialParams,
+                    page: pageParam,
+                    provider
+                }
+            })
+            return res.data
         },
+        getNextPageParam: (lastPage, allPages) => {
+            if (!lastPage?.data || lastPage.data.length < initialParams.limit) return undefined
+            return allPages.length + 1
+        },
+        initialPageParam: 1
+    })
+
+    const jobs = data?.pages.flatMap((page) => page.data) ?? []
+
+    const {ref, inView} = useInView({
+        threshold: 0,
+        rootMargin: "100px",
     });
+
+    useEffect(() => {
+        if (inView && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
     if (isPending) {
         return (
@@ -62,7 +85,7 @@ const JobList = () => {
         );
     }
 
-    if (!jobs?.data?.length) {
+    if (!jobs?.length) {
         return (
             <Empty>
                 <EmptyHeader>
@@ -80,13 +103,25 @@ const JobList = () => {
         );
     }
 
+
     return (
         <section className="mt-5">
             <div className="grid grid-cols-3 gap-6">
-                {jobs.data.map((job, index) => (
-                    <JobCard key={index} job={job}/>
-                ))}
+                {jobs.map((job, index) => {
+                    const isLast = index === jobs.length - 1
+                    return (
+                        <div key={index} ref={isLast ? ref : undefined}>
+                            <JobCard job={job}/>
+                        </div>
+                    )
+                })}
             </div>
+
+            {isFetchingNextPage && (
+                <div className="flex justify-center py-6">
+                    <Loader2Icon className="size-6 animate-spin text-muted-foreground"/>
+                </div>
+            )}
         </section>
     );
 };
