@@ -31,7 +31,7 @@ provides a **searchable API** powered by **Full-Text Search (FTS)**.
 - 🎨 **TailwindCSS + shadcn/ui** for modern, accessible components
 - 🔎 Integrated **Full-Text Search** UI
 - 🧭 **Provider Tabs** (e.g. *All Jobs*, *JakartaKerja*, *OpenKerja*)
-- 📱 Responsive design with mobile-friendly drawers
+- 📱 Responsive design
 
 ---
 
