@@ -2,6 +2,7 @@ import React, {Suspense} from 'react';
 import {BriefcaseIcon} from "lucide-react";
 import ProviderTabs from "@/app/_components/provider-tabs";
 import AppSearch from "@/app/_components/app-search";
+import TotalJobs from "@/app/_components/total-jobs";
 
 const AppHero = () => {
     return (
@@ -11,10 +12,10 @@ const AppHero = () => {
                     <BriefcaseIcon size={28} strokeWidth={2} className="stroke-blue-700"/>
                     <span className="font-semibold text-xl tracking-tight">Job Board</span>
                 </div>
-                <span className="text-sm text-muted-foreground">20 jobs</span>
+
+                <TotalJobs/>
             </div>
             <AppSearch/>
-
             <div>
                 <Suspense>
                     <ProviderTabs/>

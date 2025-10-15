@@ -6,15 +6,13 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from sqlmodel import func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
-from app.job_posting.service import unique_values
 from app.job_provider.schema import JobPostingRead
-from app.models import JobPosting, JobProvider, Specification
+from app.models import JobPosting, JobProvider
 
 jobs_posting_router = APIRouter(tags=["job_posting"], prefix="/jobs")
 
@@ -78,22 +76,18 @@ async def jobs(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@jobs_posting_router.get("/filters")
-async def get_job_filters(
+@jobs_posting_router.get("/total")
+async def total_jobs(
         session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    query = select(Specification)
-    results = await session.exec(query)
-    specifications = results.scalars().all()
+    query = select(func.count()).select_from(JobPosting)
+    total = (await session.exec(query)).scalar_one()
 
     return {
         "success": True,
         "message": "",
         "data": {
-            "job_type": unique_values(specifications, "job_type"),
-            "work_arrangement": unique_values(specifications, "work_arrangement"),
-            "experience_level": unique_values(specifications, "experience_level"),
-            "location": unique_values(specifications, "location"),
+            "total": total,
         }
     }
 
