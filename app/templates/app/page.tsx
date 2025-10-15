@@ -9,24 +9,25 @@ import {ProviderEnum} from "@/enums/provider-enum";
 import {Suspense} from "react";
 
 interface Props {
-    searchParams: Promise<{ provider: string }>
+    searchParams: Promise<{ provider: string, keyword: string }>
 }
 
 export default async function Home({searchParams}: Props) {
-    const {provider} = await searchParams
+    const {provider, keyword} = await searchParams
 
     const queryClient = getQueryClient()
     const http = await getAxios()
 
     const initialParams = {limit: 18} as const
     await queryClient.prefetchInfiniteQuery({
-        queryKey: jobKeys.allWithParams({...initialParams, provider: provider as ProviderEnum}),
+        queryKey: jobKeys.allWithParams({...initialParams, provider: provider as ProviderEnum, keyword}),
         queryFn: async ({pageParam = 1}) => {
             const res = await http.get<TApiResponse<JobPosting[]>>("/jobs", {
                 params: {
                     ...initialParams,
+                    keyword,
+                    provider,
                     page: pageParam,
-                    provider
                 }
             })
             return res.data

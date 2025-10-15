@@ -1,12 +1,14 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Any
 
 from sqlalchemy import DateTime
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlmodel import Field, Column, Relationship
 
 from app.job_posting.schema import JobPostingBase, SpecificationBase, PositionBase
 from app.job_provider.schema import JobProviderBase
+
 
 class Specification(SpecificationBase, table=True):
     __tablename__ = "specifications"
@@ -70,6 +72,8 @@ class JobPosting(JobPostingBase, table=True):
         sa_relationship_kwargs={"uselist": False}
     )
 
+    search_vector: Optional[Any] = Field(default=None, sa_column=Column(TSVECTOR))
+
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),
@@ -82,4 +86,3 @@ class JobPosting(JobPostingBase, table=True):
             onupdate=datetime.now(timezone.utc),
         ),
     )
-
