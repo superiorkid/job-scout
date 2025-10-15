@@ -7,6 +7,16 @@ provides a **searchable API** powered by **Full-Text Search (FTS)**.
 
 ---
 
+## Screenshots
+
+> Example UI previews of the app
+
+| Homepage                             | Detail Job Dialog                         |
+|--------------------------------------|-------------------------------------------|
+| ![Upload PDF](./images/homepage.png) | ![Chat with PDF](./images/job-detail.png) |
+
+---
+
 ## ✨ Features
 
 ### 🔧 Backend (FastAPI)
