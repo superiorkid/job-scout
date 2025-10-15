@@ -111,7 +111,7 @@ const JobList = () => {
 
     return (
         <section className="mt-5">
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {jobs.map((job, index) => {
                     const isLast = index === jobs.length - 1
                     return (

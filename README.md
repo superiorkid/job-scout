@@ -1,28 +1,47 @@
-# Job Scout
+# 🕵️‍♂️ Job Scout
 
-Job Scout is an automated **job scraper and sync API** built with **FastAPI**, **SQLModel**, and **aiohttp**.  
-It collects job postings from multiple job provider websites and keeps them updated in your database.
+**Job Scout** is a full-stack **job aggregator and search platform** built with **FastAPI** (backend) and **Next.js** (
+frontend).  
+It automatically scrapes job postings from multiple job provider websites, stores them in a PostgreSQL database, and
+provides a **searchable API** powered by **Full-Text Search (FTS)**.
 
 ---
 
-## 🚀 Features
+## ✨ Features
 
-- 🔄 Background job syncing (runs asynchronously)
-- 🕸️ Web scraping using `aiohttp` and `BeautifulSoup`
-- 🧱 Database models powered by `SQLModel`
-- ⚙️ Relationship management for positions & specifications
-- 🧩 Provider-based sync (e.g., *OpenKerja*, *JakartaKerja*)
-- 💾 Duplicate-safe job updates
-- 🧰 Swagger auto-generated API docs
+### 🔧 Backend (FastAPI)
+
+- 🔄 **Automated Background Sync** — Scrapes and updates job data from providers like *JakartaKerja* and *OpenKerja*
+- 🕸️ **Async Scraping** — Built using `aiohttp` + `BeautifulSoup` for efficient non-blocking scraping
+- 🧱 **SQLModel ORM** — Combines the power of SQLAlchemy and Pydantic
+- 💾 **Duplicate-Safe Updates** — Avoids inserting the same job twice
+- 🔍 **Full-Text Search (FTS)** —  
+  Search jobs by title, company, or location using PostgreSQL’s FTS system
+    - Works with both **Bahasa Indonesia** and **English** data
+    - Uses `to_tsvector` + `plainto_tsquery` with `"simple"` dictionary
+- 🧰 **Swagger UI** — Auto-generated API docs at `/docs`
+- ⏰ **APScheduler Integration** — Automates scraping at scheduled times
+
+---
+
+### 💻 Frontend (Next.js + shadcn/ui)
+
+- ⚡ **Next.js 15 App Router**
+- 🧩 **@tanstack/react-query** for API state management & infinite scroll pagination
+- 🎨 **TailwindCSS + shadcn/ui** for modern, accessible components
+- 🔎 Integrated **Full-Text Search** UI
+- 🧭 **Provider Tabs** (e.g. *All Jobs*, *JakartaKerja*, *OpenKerja*)
+- 📱 Responsive design with mobile-friendly drawers
 
 ---
 
 ## 🗂️ Tech Stack
 
-- **FastAPI** — backend framework
-- **SQLModel** — ORM + Pydantic models
-- **PostgreSQL** — primary database
-- **aiohttp** — async scraping
-- **BeautifulSoup4** — HTML parsing
-- **Uvicorn** — ASGI server
+| Layer        | Technology                                                            |
+|--------------|-----------------------------------------------------------------------|
+| **Frontend** | Next.js 14, TypeScript, TailwindCSS, shadcn/ui, @tanstack/react-query |
+| **Backend**  | FastAPI, SQLModel, APScheduler, aiohttp, BeautifulSoup4               |
+| **Database** | PostgreSQL (Full-Text Search enabled)                                 |
+| **Server**   | Uvicorn (ASGI)                                                        |
 
+---
