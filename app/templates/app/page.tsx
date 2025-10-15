@@ -4,7 +4,7 @@ import {getAxios} from "@/lib/http";
 import {JobPosting, TApiResponse} from "@/types";
 import {dehydrate, HydrationBoundary} from "@tanstack/react-query";
 import JobList from "@/app/_components/job-list";
-import {jobKeys, specificationKeys} from "@/lib/query-keys";
+import {jobKeys} from "@/lib/query-keys";
 import {ProviderEnum} from "@/enums/provider-enum";
 import {Suspense} from "react";
 
@@ -18,34 +18,22 @@ export default async function Home({searchParams}: Props) {
     const queryClient = getQueryClient()
     const http = await getAxios()
 
-    const initialParams = {page: 1, limit: 25} as const
+    const initialParams = {limit: 18} as const
+    await queryClient.prefetchInfiniteQuery({
+        queryKey: jobKeys.allWithParams({...initialParams, provider: provider as ProviderEnum}),
+        queryFn: async ({pageParam = 1}) => {
+            const res = await http.get<TApiResponse<JobPosting[]>>("/jobs", {
+                params: {
+                    ...initialParams,
+                    page: pageParam,
+                    provider
+                }
+            })
+            return res.data
+        },
+        initialPageParam: 1
+    })
 
-    await Promise.all([
-        queryClient.prefetchQuery({
-            queryKey: jobKeys.allWithParams({...initialParams, provider: provider as ProviderEnum}),
-            queryFn: async () => {
-                const res = await http.get<TApiResponse<JobPosting[]>>("/jobs", {
-                    params: {
-                        ...initialParams,
-                        provider
-                    }
-                })
-                return res.data
-            }
-        }),
-        queryClient.prefetchQuery({
-            queryKey: specificationKeys.filters(),
-            queryFn: async () => {
-                const res = await http.get<TApiResponse<{
-                    job_type: string[],
-                    work_arrangement: string[],
-                    experience_level: string[],
-                    location: string[]
-                }>>("/jobs/filters")
-                return res.data
-            }
-        })
-    ])
 
     return (
         <HydrationBoundary state={dehydrate(queryClient)}>
