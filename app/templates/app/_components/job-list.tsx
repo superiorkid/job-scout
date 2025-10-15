@@ -13,6 +13,7 @@ import {JobPosting, TApiResponse} from "@/types";
 import axiosInstance from "@/lib/http-client";
 import {useInView} from "react-intersection-observer";
 import {useEffect} from 'react'
+import useDebounce from "@/hooks/use-debounce";
 
 const JobList = () => {
     const [provider] = useQueryState<ProviderEnum>(
@@ -22,15 +23,19 @@ const JobList = () => {
         )
     );
 
+    const [keyword] = useQueryState('keyword', {clearOnDefault: true, defaultValue: ""})
+    const debouncedKeyword = useDebounce(keyword, 500)
+
     const initialParams = {limit: 18} as const;
     const {data, isPending, fetchNextPage, hasNextPage, isFetchingNextPage, isError, error} = useInfiniteQuery({
-        queryKey: jobKeys.allWithParams({...initialParams, provider}),
+        queryKey: jobKeys.allWithParams({...initialParams, provider, keyword: debouncedKeyword}),
         queryFn: async ({pageParam = 1}) => {
             const res = await axiosInstance.get<TApiResponse<JobPosting[]>>("/jobs", {
                 params: {
                     ...initialParams,
+                    provider,
+                    keyword: debouncedKeyword,
                     page: pageParam,
-                    provider
                 }
             })
             return res.data

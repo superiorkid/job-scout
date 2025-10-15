@@ -12,7 +12,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
 from app.job_provider.schema import JobPostingRead
-from app.models import JobPosting, JobProvider
+from app.models import JobPosting, JobProvider, Position, Specification
 
 jobs_posting_router = APIRouter(tags=["job_posting"], prefix="/jobs")
 
@@ -30,6 +30,7 @@ async def jobs(
         limit: Annotated[int, Query(gt=0, le=100)] = 15,
         page: Annotated[int, Query(gt=0)] = 1,
         provider: Annotated[ProviderEnum, Query()] = ProviderEnum.AllJobs,
+        keyword: Optional[str] = Query(None, description="Search jobs by title, company, or location"),
 ):
     try:
         offset = (page - 1) * limit
@@ -50,18 +51,41 @@ async def jobs(
         if provider_id:
             statement = statement.where(JobPosting.job_provider_id == provider_id)
 
+        if keyword:
+            ts_query = func.plainto_tsquery("simple", keyword)
+
+            statement = (
+                statement.outerjoin(JobPosting.positions)
+                .outerjoin(JobPosting.specification)
+                .where(
+                    JobPosting.search_vector.op('@@')(ts_query)
+                    | func.to_tsvector('simple', func.coalesce(Position.text, '')).op('@@')(ts_query)
+                    | func.to_tsvector('simple', func.coalesce(Specification.location, '')).op('@@')(ts_query)
+                )
+            )
+
+            # add rank for relevance sorting
+            rank = func.ts_rank_cd(JobPosting.search_vector, ts_query)
+            statement = statement.add_columns(rank).order_by(rank.desc())
+
+        # total count
         total_statement = select(func.count()).select_from(statement.subquery())
         total_count = (await session.exec(total_statement)).scalar_one()
 
         result = await session.exec(statement.limit(limit).offset(offset))
-        jobs_vacancies = result.unique().scalars().all()
+
+        if keyword:
+            rows = result.fetchall()
+            job_vacancies = [row[0] for row in rows]
+        else:
+            job_vacancies = result.unique().scalars().all()
 
         total_pages = ceil(total_count / limit) if total_count else 1
 
         return {
             "success": True,
-            "message": "Job vacancies retrieved" if jobs_vacancies else "No job vacancies found",
-            "data": [JobPostingRead.model_validate(job, from_attributes=True) for job in jobs_vacancies],
+            "message": "Job vacancies retrieved" if job_vacancies else "No job vacancies found",
+            "data": [JobPostingRead.model_validate(job, from_attributes=True) for job in job_vacancies],
             "pagination": {
                 "total_data": total_count,
                 "total_pages": total_pages,
