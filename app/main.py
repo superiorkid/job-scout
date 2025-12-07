@@ -65,3 +65,8 @@ app.include_router(
     jobs_posting_router,
     prefix=settings.api_prefix
 )
+
+
+@app.get("/")
+def index():
+    return {"test": "ok"}
